@@ -16,6 +16,8 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+
+  // Comment these two functions out if you don't want the message loop to run
   bindSocket();
   messageLoop();
 })
