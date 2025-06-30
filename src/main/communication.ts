@@ -134,10 +134,13 @@ function findBroadcast() :string {
  * @param command The command to be sent
  */
 function sendMessage(command: Command, ip: string) :void {
-  let enc: Buffer = Buffer.from(encodeCommand(command), 'utf8');
-
-  socket.send(enc, port, ip);
-  console.log('sent command:', command.type, command.args);
+  try {
+    let enc: Buffer = Buffer.from(encodeCommand(command), 'utf8');
+    socket.send(enc, port, ip);
+    console.log('sent command:', command.type, command.args);
+  } catch(error) {
+    console.log('Error:', error, '\nSending command:', command);
+  }
 }
 
 /**
