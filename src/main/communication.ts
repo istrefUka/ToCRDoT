@@ -22,7 +22,7 @@ type Command = {
  * @param command The command to be encoded
  * @returns The string encoding of the command
  */
-function encodeCommand(command: Command) :string {
+export function encodeCommand(command: Command) :string {
   // Encode the type into base64
   let cmdString: string = Buffer.from(command.type, 'utf8').toString('base64');
 
@@ -42,7 +42,7 @@ function encodeCommand(command: Command) :string {
  * @param cmdString The encoding of the command
  * @returns The decoded command
  */
-function decodeCommand(cmdString: string) :Command {
+export function decodeCommand(cmdString: string) :Command {
   let command: Command = {type: '', args: []};
   let cmd64: string[] = cmdString.split(' ');
 
