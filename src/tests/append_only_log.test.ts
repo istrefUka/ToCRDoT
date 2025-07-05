@@ -220,6 +220,7 @@ describe("AppendOnlyLog Tests", () => {
       [creator1, 2],
       [creator2, 1],
     ]));
+    log.validate();
     expect(query_res.length).toEqual(3);
   });
   it("AppendOnlyLog test _query_missing_ids 4", () => {
@@ -244,6 +245,7 @@ describe("AppendOnlyLog Tests", () => {
       [creator1, 10],
       [creator2, 1],
     ]));
+    log.validate();
     expect(query_res.length).toEqual(2);
   });
   it("AppendOnlyLog test _query_missing_ids 4", () => {
@@ -268,6 +270,7 @@ describe("AppendOnlyLog Tests", () => {
       [creator1, 10],
       [creator2, 1],
     ]));
+    log.validate();
     expect(query_res.length).toEqual(2);
   });
   it("AppendOnlyLog test saving and loading", () => {
@@ -286,16 +289,64 @@ describe("AppendOnlyLog Tests", () => {
     log.add_operation(creator1, {command: "cmd3", args: ["arg6", "arg7"]}, [entry2], entry3);
     log.add_operation(creator2, {command: "cmd4", args: ["arg8"]}, [entry3], entry4);
     log.add_operation(creator3, {command: "cmd5", args: ["arg9"]}, [], entry5);
+    log.validate();
     fs.mkdirSync("test_tmp/", { recursive: true });
     log.save_to("test_tmp/test.json");
     let log2 = new AppendOnlyLog();
     log2.load_from("test_tmp/test.json");
+    log2.validate();
     expect(log2).toEqual(log);
     fs.rmdirSync("test_tmp/", { recursive: true });
   })
   it("AppendOnlyLog test saving to a nonexistent directory", () => {
     let log = new AppendOnlyLog();
+    log.validate();
     expect(() => {log.save_to("this_path_doesnt_exist/test.json")}).toThrow();
+  })
+  it("AppendOnlyLog test update with entries already in log", () => {
+    let log = new AppendOnlyLog();
+    let creator1 = randomUUID();
+    let creator2 = randomUUID();
+    let creator3 = randomUUID();
+    let entry1 = randomUUID();
+    let entry2 = randomUUID();
+    let entry3 = randomUUID();
+    let entry4 = randomUUID();
+    let entry5 = randomUUID();
+    let op1 = {command: "cmd1", args: ["arg1", "arg2"]};
+    let op2 = {command: "cmd2", args: ["arg3", "arg4", "arg5"]};
+    log.add_operation(creator1, op1, [], entry1);
+    log.add_operation(creator1, op2, [entry1], entry2);
+    log.add_operation(creator1, {command: "cmd3", args: ["arg6", "arg7"]}, [entry2], entry3);
+    log.add_operation(creator2, {command: "cmd4", args: ["arg8"]}, [entry3], entry4);
+    log.add_operation(creator3, {command: "cmd5", args: ["arg9"]}, [], entry5);
+    log.update([
+        new LogEntry(creator1, entry2, op2, [entry1], 1)
+    ]);
+    log.validate();
+  })
+  it("AppendOnlyLog test update with entries already in log, data inconsistency", () => {
+    let log = new AppendOnlyLog();
+    let creator1 = randomUUID();
+    let creator2 = randomUUID();
+    let creator3 = randomUUID();
+    let entry1 = randomUUID();
+    let entry2 = randomUUID();
+    let entry3 = randomUUID();
+    let entry4 = randomUUID();
+    let entry5 = randomUUID();
+    let op1 = {command: "cmd1", args: ["arg1", "arg2"]};
+    let op2 = {command: "cmd2", args: ["arg3", "arg4", "arg5"]};
+    let op3 = {command: "cmd3", args: ["arg6", "arg7"]};
+    log.add_operation(creator1, op1, [], entry1);
+    log.add_operation(creator1, op2, [entry1], entry2);
+    log.add_operation(creator1, op3, [entry2], entry3);
+    log.add_operation(creator2, {command: "cmd4", args: ["arg8"]}, [entry3], entry4);
+    log.add_operation(creator3, {command: "cmd5", args: ["arg9"]}, [], entry5);
+    log.validate();
+    expect(() => {log.update([
+        new LogEntry(creator1, entry3, op2, [entry1], 2) // the dependencies don't match
+    ])}).toThrow();
   })
   // TODO test query_missing, query_missing_ops
   // TODO test save_to, load_from

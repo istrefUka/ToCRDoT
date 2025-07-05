@@ -80,11 +80,59 @@ export class AppendOnlyLog {
       }
       let curr = this.entryMap.get(entry.creator);
       let curr_len = curr!.length;
-      if (curr_len !== entry.index) {
-        throw new Error("Tried to add entry that doesn't match the index");
+      if (curr_len < entry.index) {
+        throw new Error("Tried to add entry that skips spot in log of creator " + entry.creator);
+      }
+      if (curr_len > entry.index) {
+        let local_entry = curr!.at(entry.index)!;
+        if (JSON.stringify(local_entry) !== JSON.stringify(entry)) {
+          // todo: replace this error with a warning once a logging system is in place
+          throw new Error("entries don't match; received entry " + JSON.stringify(entry, undefined, 2) + " but entry " + JSON.stringify(local_entry, undefined, 2) + " was in log")
+        }
+        return;
       }
 
       curr!.push(entry);
+    }
+  }
+
+  validate(): void {
+    let entryID_counts = new Map<uuid, number>();
+    let duplicates = false;
+    for (let creator of this.entryMap.keys()) {
+      let curr_array = this.entryMap.get(creator)!;
+      for (let i = 0; i < curr_array.length; i++) {
+        let curr_entry = curr_array.at(i)!;
+        if (curr_entry.index !== i) {
+          throw new Error("index of entry " + curr_entry.id + " doesn't match");
+        }
+        if (curr_entry.creator !== creator) {
+          throw new Error("creator of entry " + curr_entry.id + " doesn't match");
+        }
+        if (!this._has_dependencies(curr_entry.dependencies)) {
+          throw new Error("dependencies of entry " + curr_entry.id + " aren't present in append-only log");
+        }
+
+        if (entryID_counts.has(curr_entry.id)) {
+          duplicates = true;
+        }
+        entryID_counts.set(curr_entry.id, (entryID_counts.get(curr_entry.id) ?? 0) + 1);
+      }
+    }
+
+    if (duplicates) {
+      let s = "";
+      let first_iter = true;
+      for (let k of entryID_counts.keys()) {
+        if (entryID_counts.get(k)! > 1) {
+          if (!first_iter) {
+            s += ", ";
+          }
+          s += k;
+          first_iter = false;
+        }
+      }
+      throw new Error("The following entries were duplicates: " + s);
     }
   }
 
