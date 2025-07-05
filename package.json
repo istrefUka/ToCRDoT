@@ -4,7 +4,8 @@
   "description": "",
   "main": "./dist/main.js",
   "scripts": {
-    "test": "jest",
+    "test": "jest --testPathPatterns=src/tests/",
+    "test-cov": "jest --testPathPatterns=src/tests/ --coverage=true --coverageDirectory=coverage",
     "build": "tsc",
     "start": "npm run build && electron ."
   },
