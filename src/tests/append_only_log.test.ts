@@ -348,6 +348,44 @@ describe("AppendOnlyLog Tests", () => {
         new LogEntry(creator1, entry3, op2, [entry1], 2) // the dependencies don't match
     ])}).toThrow();
   })
-  // TODO test query_missing, query_missing_ops
-  // TODO test save_to, load_from
+  it("AppendOnlyLog test validate", () => {
+    let log = new AppendOnlyLog();
+    let creator1 = randomUUID();
+    let entry1 = randomUUID();
+    let entry2 = randomUUID();
+    let entry3 = randomUUID();
+    let op1 = {command: "cmd1", args: ["arg1", "arg2"]};
+    let op2 = {command: "cmd2", args: ["arg3", "arg4", "arg5"]};
+    let op3 = {command: "cmd3", args: ["arg6", "arg7"]};
+    log.add_operation(creator1, op1, [], entry1);
+    log.add_operation(creator1, op2, [entry1], entry2);
+    log.entryMap.get(creator1)?.push(new LogEntry(creator1, entry2, op3, [], 2)); // insert entry with duplicate id
+    expect(() => {
+      log.validate()
+    }).toThrow();
+    log.entryMap.get(creator1)?.pop();
+    expect(() => {
+      log.validate()
+    }).not.toThrow();
+    log.entryMap.get(creator1)?.push(new LogEntry(creator1, entry3, op3, ["garbage"], 2)); // insert entry with garbage dependency
+    expect(() => {
+      log.validate()
+    }).toThrow();
+    log.entryMap.get(creator1)?.pop();
+    expect(() => {
+      log.validate()
+    }).not.toThrow();
+    log.entryMap.get(creator1)?.push(new LogEntry("garbage", entry3, op3, [], 2)); // insert entry with wrong creator id
+    expect(() => {
+      log.validate()
+    }).toThrow();
+    log.entryMap.get(creator1)?.pop();
+    expect(() => {
+      log.validate()
+    }).not.toThrow();
+    log.entryMap.get(creator1)?.push(new LogEntry(creator1, entry3, op3, [], 1)); // insert entry with wrong index
+    expect(() => {
+      log.validate()
+    }).toThrow();
+  })
 })
