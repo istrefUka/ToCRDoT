@@ -161,7 +161,7 @@ describe("AppendOnlyLog Tests", () => {
     log.add_operation(creator2, op, [entry0, entry2], entry3);
     log.add_operation(creator3, op, [], entry4);
     log.add_operation(creator1, op, [entry0, entry1, entry3, entry4], entry5);
-    let query_res = log._query_missing_ids(new Map());
+    let query_res = log._query_missing_entryIDs_ordered(new Map());
     let idx = [entry0, entry1, entry2, entry3, entry4, entry5].map((value) => {return query_res.indexOf(value)});
     expect(query_res.length).toEqual(6);
     expect(idx[2]).toBeGreaterThan(idx[1]);
@@ -188,7 +188,7 @@ describe("AppendOnlyLog Tests", () => {
     log.add_operation(creator1, op, [entry2, entry1], entry3);
     log.add_operation(creator1, op, [], entry4);
     log.add_operation(creator3, op, [entry4], entry5);
-    let query_res = log._query_missing_ids(new Map());
+    let query_res = log._query_missing_entryIDs_ordered(new Map());
     let idx = [entry0, entry1, entry2, entry3, entry4, entry5].map((value) => {return query_res.indexOf(value)});
     expect(query_res.length).toEqual(6);
     expect(idx.every((val) => val >= 0)).toBeTruthy();
@@ -216,7 +216,7 @@ describe("AppendOnlyLog Tests", () => {
     log.add_operation(creator1, op, [entry2, entry1], entry3);
     log.add_operation(creator1, op, [], entry4);
     log.add_operation(creator3, op, [entry4], entry5);
-    let query_res = log._query_missing_ids(new Map([
+    let query_res = log._query_missing_entryIDs_ordered(new Map([
       [creator1, 2],
       [creator2, 1],
     ]));
@@ -240,7 +240,7 @@ describe("AppendOnlyLog Tests", () => {
     log.add_operation(creator1, op, [entry2, entry1], entry3);
     log.add_operation(creator1, op, [], entry4);
     log.add_operation(creator3, op, [entry4], entry5);
-    let query_res = log._query_missing_ids(new Map([
+    let query_res = log._query_missing_entryIDs_ordered(new Map([
       [creator1, 10],
       [creator2, 1],
     ]));
@@ -264,7 +264,7 @@ describe("AppendOnlyLog Tests", () => {
     log.add_operation(creator1, op, [entry2, entry1], entry3);
     log.add_operation(creator1, op, [], entry4);
     log.add_operation(creator3, op, [entry4], entry5);
-    let query_res = log._query_missing_ids(new Map([
+    let query_res = log._query_missing_entryIDs_ordered(new Map([
       [creator1, 10],
       [creator2, 1],
     ]));

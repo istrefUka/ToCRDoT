@@ -102,8 +102,8 @@ export class AppendOnlyLog {
    * @param frontier other frontier to diff against our frontier
    * @returns the LogEntries that the other replica is missing based on their frontier. In a topological order. 
    */
-  _query_missing_ids(frontier: Frontier): Array<uuid> {
-    let all_nodes_in_subgraph = this._get_missing_ids_unsorted(frontier)
+  _query_missing_entryIDs_ordered(frontier: Frontier): Array<uuid> {
+    let all_nodes_in_subgraph = this._query_missing_entryIDs_unordered(frontier)
     let subgraph = new Set<uuid>(all_nodes_in_subgraph)
     let unmarked = new Set<uuid>(all_nodes_in_subgraph);
     let temp_marked = new Set<uuid>();
@@ -145,8 +145,8 @@ export class AppendOnlyLog {
     return resIDs.reverse();
   }
 
-  query_missing(frontier: Frontier): Array<LogEntry> {
-    let resIDs = this._query_missing_ids(frontier);
+  query_missing_entries_ordered(frontier: Frontier): Array<LogEntry> {
+    let resIDs = this._query_missing_entryIDs_ordered(frontier);
     let res = new Array<LogEntry>();
     for (let id of resIDs) {
       let curr = this._search_entries(id);
@@ -156,7 +156,14 @@ export class AppendOnlyLog {
     return res;
   }
 
-  // TODO implement query_missing_ops
+  query_missing_operations_ordered(old_frontier: Frontier): Array<Operation> {
+    let entries = this.query_missing_entries_ordered(old_frontier);
+    let res = new Array<Operation>();
+    for (let e of entries) {
+      res.push(e.operation);
+    }
+    return res;
+  }
 
   /**
    * This function saves the append-only log persistently in the file given. 
@@ -201,7 +208,7 @@ export class AppendOnlyLog {
     return null;
   }
 
-  _get_missing_ids_unsorted(frontier?: Frontier): Array<uuid> {
+  _query_missing_entryIDs_unordered(frontier?: Frontier): Array<uuid> {
     if (frontier == null) {
       frontier = new Map<uuid, number>();
     }
