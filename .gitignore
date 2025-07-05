@@ -3,3 +3,4 @@
 !*.config.js
 *.DS_Store
 /coverage
+/test_tmp

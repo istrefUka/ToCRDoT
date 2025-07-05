@@ -1,4 +1,5 @@
 //import {v4 as uuidv4} from 'uuid';
+import * as fs from "fs";
 
 // the following functions shall be used to serialize / deserialize the append-only log
 // source: https://stackoverflow.com/a/56150320/13166601
@@ -95,7 +96,6 @@ export class AppendOnlyLog {
     return res;
   }
 
-  // 
   /**
    * the resulting array must be topologically sorted.
    * algorithm used: https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
@@ -157,7 +157,27 @@ export class AppendOnlyLog {
   }
 
   // TODO implement query_missing_ops
-  // TODO implement save_to, load_from
+
+  /**
+   * This function saves the append-only log persistently in the file given. 
+   * If the file doesn't exist, it is created. 
+   * @param file path of file to store the append-only log in. 
+   * @throws an error if the directory the file is located in doesn't exist. 
+   */
+  save_to(file: fs.PathLike): void {
+    fs.writeFileSync(file, JSON.stringify(this.entryMap, replacer, 2), "utf-8");
+    console.log("wrote append-only log to file " + fs.realpathSync(file).toString());
+  }
+
+  /**
+   * This function loads the append-only log from the given file. 
+   * @param file path of file to load the append-only log from. 
+   * @throws an error if the file doesn't exist. 
+   */
+  load_from(file: fs.PathLike): void {
+    this.entryMap = JSON.parse(fs.readFileSync(file, "utf-8").toString(), reviver);
+    console.log("append-only log saved successfully");
+  }
 
   _search_entries(id: uuid, creator?: uuid): LogEntry | null {
     if (creator == null) {

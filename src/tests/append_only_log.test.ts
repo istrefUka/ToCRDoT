@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { AppendOnlyLog, LogEntry} from "../main/append_only_log";
+import * as fs from "fs"
 
 describe("AppendOnlyLog Tests", () => {
   it("AppendOnlyLog test _search_entries single user", () => {
@@ -269,6 +270,33 @@ describe("AppendOnlyLog Tests", () => {
     ]));
     expect(query_res.length).toEqual(2);
   });
+  it("AppendOnlyLog test saving and loading", () => {
+    let log = new AppendOnlyLog();
+    let creator1 = randomUUID();
+    let creator2 = randomUUID();
+    let creator3 = randomUUID();
+    let entry1 = randomUUID();
+    let entry2 = randomUUID();
+    let entry3 = randomUUID();
+    let entry4 = randomUUID();
+    let entry5 = randomUUID();
+    let op1 = {command: "cmd1", args: ["arg1", "arg2"]};
+    log.add_operation(creator1, op1, [], entry1);
+    log.add_operation(creator1, {command: "cmd2", args: ["arg3", "arg4", "arg5"]}, [entry1], entry2);
+    log.add_operation(creator1, {command: "cmd3", args: ["arg6", "arg7"]}, [entry2], entry3);
+    log.add_operation(creator2, {command: "cmd4", args: ["arg8"]}, [entry3], entry4);
+    log.add_operation(creator3, {command: "cmd5", args: ["arg9"]}, [], entry5);
+    fs.mkdirSync("test_tmp/", { recursive: true });
+    log.save_to("test_tmp/test.json");
+    let log2 = new AppendOnlyLog();
+    log2.load_from("test_tmp/test.json");
+    expect(log2).toEqual(log);
+    fs.rmdirSync("test_tmp/", { recursive: true });
+  })
+  it("AppendOnlyLog test saving to a nonexistent directory", () => {
+    let log = new AppendOnlyLog();
+    expect(() => {log.save_to("this_path_doesnt_exist/test.json")}).toThrow();
+  })
   // TODO test query_missing, query_missing_ops
   // TODO test save_to, load_from
 })
