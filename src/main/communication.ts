@@ -71,11 +71,17 @@ export function bindSocket() {
  */
 function findBroadcast() :string {
   let interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = os.networkInterfaces();
+  //console.log(interfaces);
 
-  // Itterates over every network interface
+  // Iterates over every network interface
   for(let name of Object.keys(interfaces)) {
-    let iface = interfaces[name];
-    if(!iface) continue;
+    let iface = interfaces[name]!;
+
+    // only wireless connections are allowed
+    if(!(name.match(".*Wi-Fi.*") || name.match(".*WLAN.*") || name.match("wl.*"))) {
+      console.log("skipped interface " + name + " because it is assumed not to be a wireless interface");
+      continue;
+    }
 
     // Not sure what info exactly is
     for(let info of iface) {
@@ -119,7 +125,7 @@ function findBroadcast() :string {
         });
 
         broadcast = broadcast.slice(0, -1);
-        console.log('determined broadcast adress:', broadcast);
+        console.log('determined broadcast adress:', broadcast, "on interface:", name);
         return broadcast;
       }
     }
