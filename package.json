@@ -25,9 +25,13 @@
     "@types/electron": "^1.4.38",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.7",
+    "@types/uuid": "^10.0.0",
     "electron": "^37.1.0",
     "jest": "^30.0.3",
     "ts-jest": "^29.4.0",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "uuid": "^11.1.0"
   }
 }
