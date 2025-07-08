@@ -1,10 +1,10 @@
 import dgram, { Socket } from 'dgram';
 import { AddressInfo } from 'net';
 import os from 'os';
+import { resolve } from 'path';
 
-const port: number = 8080;
-const broadcast = findBroadcast();
-const socket: Socket = dgram.createSocket('udp4');
+let broadcast = findBroadcast();
+let socket: Socket | undefined;
 
 /**
  * This type stores command name and arguments, for example {type: create project, args { Alex, DPI }}.
@@ -57,11 +57,81 @@ export function decodeCommand(cmdString: string) :Command {
   return command;
 }
 
+function bindSocket(socket: Socket, port: number) {
+  return new Promise<void>((resolve, reject) => {
+    socket.once('error', reject);
+    socket.bind(port, () => {
+      socket.off('error', reject);
+      console.log("socket bound to port " + port)
+      resolve();
+    });
+  });
+}
+
+function closeSocket(socket: Socket): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    socket.close(() => resolve());
+  });
+}
+
+function initSocket(socket: Socket): void {
+  // This event prints and error message and closes the socket.
+  socket.on('error', (err) => {
+    console.error('client error:', err.stack);
+    socket?.close();
+  })
+
+  // This event decodes the received message and logs it.
+  socket.on('message', (msg, rinfo) => {
+    let received: string = msg.toString('utf8');
+    let command = decodeCommand(received);
+    console.log('received command:', command, "from", rinfo.address, rinfo.port);
+  })
+
+  // This event logs where the instance is listening on.
+  socket.on('listening', () => {
+    if (socket == null) {
+      throw new Error("Socket undefined");
+    }
+    const address: AddressInfo = socket.address();
+    console.log('listening on:', address.address, ':', address.port);
+  })
+
+}
+
 /**
  * This function binds the socket to a specific port.
+ * Sets the socket up for communication.
+ * If no port is given, the port 8080 is used.
  */
-export function bindSocket() {
-    socket.bind(port);
+export function initCommunication(broadcast_ip?: string, port?: number): Promise<void> {
+  if (port == null) {
+    port = 8080;
+  }
+  if (broadcast_ip) {
+    broadcast = broadcast_ip;
+  }
+  socket = dgram.createSocket('udp4');
+  initSocket(socket);
+
+  return bindSocket(socket, port);
+}
+
+export function setBroadcastIP(broadcast_ip: string) {
+  broadcast = broadcast_ip;
+}
+
+export function setPort(port: number) {
+  return new Promise<void>(
+    async (resolve) => {
+      if (socket) await closeSocket(socket);
+      const newSocket = dgram.createSocket('udp4');
+      initSocket(newSocket);
+      await bindSocket(newSocket, port);
+      socket = newSocket;
+      resolve();
+    }
+  )
 }
 
 /**
@@ -140,10 +210,13 @@ function findBroadcast() :string {
  * @param command The command to be sent
  */
 function sendMessage(command: Command, ip: string) :void {
+  if (socket == null) {
+    throw new Error("Socket uninitialized");
+  }
   try {
     let enc: Buffer = Buffer.from(encodeCommand(command), 'utf8');
-    socket.send(enc, port, ip);
-    console.log('sent command:', command.type, command.args);
+    socket.send(enc, socket.address().port, ip);
+    console.log('sent command:', command.type, command.args, "on port", socket.address().port, ":", ip);
   } catch(error) {
     console.log('Error:', error, '\nSending command:', command);
   }
@@ -169,35 +242,10 @@ export async function messageLoop() {
       args: [msgIndex.toString(), 'junk', 'junk'],
     };
 
-  while(true) {
+  while(msgIndex < 10) {
     sendMessage(cmd, broadcast);
     msgIndex++;
     cmd.args[0] = msgIndex.toString();
     await sleep(1000);
   }
 }
-
-/**
- * This event prints and error message and closes the socket.
- */
-socket.on('error', (err) => {
-  console.error('client error:', err.stack);
-  socket.close();
-})
-
-/**
- * This event decodes the received message and logs it.
- */
-socket.on('message', (msg, rinfo) => {
-  let received: string = msg.toString('utf8');
-  let command = decodeCommand(received);
-  console.log('received command:', command);
-})
-
-/**
- * This event logs where the instance is listening on.
- */
-socket.on('listening', () => {
-  const address: AddressInfo = socket.address();
-  console.log('listening on:', address.address, ':', address.port);
-})
