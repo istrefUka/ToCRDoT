@@ -3,7 +3,8 @@ import * as fs from "fs";
 
 // the following functions shall be used to serialize / deserialize the append-only log
 // source: https://stackoverflow.com/a/56150320/13166601
-function replacer(key: any, value: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function replacer(key: any, value: any) { 
   if(value instanceof Map) {
     return {
       dataType: 'Map',
@@ -13,6 +14,7 @@ function replacer(key: any, value: any) {
     return value;
   }
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function reviver(key: any, value: any) {
   if(typeof value === 'object' && value !== null) {
     if (value.dataType === 'Map') {
@@ -64,27 +66,27 @@ export class AppendOnlyLog {
     if (!this.entryMap.has(creator)) {
       this.entryMap.set(creator, new Array<LogEntry>());
     }
-    let curr = this.entryMap.get(creator);
-    let curr_len = curr!.length;
-    let new_entry = new LogEntry(creator, entryID, operation, dependencies, curr_len);
+    const curr = this.entryMap.get(creator);
+    const curr_len = curr!.length;
+    const new_entry = new LogEntry(creator, entryID, operation, dependencies, curr_len);
     curr!.push(new_entry);
   }
 
   update(entries: Array<LogEntry>) {
-    for (let entry of entries) {
+    for (const entry of entries) {
       if (!this._has_dependencies(entry.dependencies)) {
         throw new Error("Couldn't find all of the following dependencies in AOL; dependencies: " + entry.dependencies + " AOL: " + JSON.stringify(this, replacer, 2));
       }
       if (!this.entryMap.has(entry.creator)) {
         this.entryMap.set(entry.creator, new Array<LogEntry>());
       }
-      let curr = this.entryMap.get(entry.creator);
-      let curr_len = curr!.length;
+      const curr = this.entryMap.get(entry.creator);
+      const curr_len = curr!.length;
       if (curr_len < entry.index) {
         throw new Error("Tried to add entry that skips spot in log of creator " + entry.creator);
       }
       if (curr_len > entry.index) {
-        let local_entry = curr!.at(entry.index)!;
+        const local_entry = curr!.at(entry.index)!;
         if (JSON.stringify(local_entry) !== JSON.stringify(entry)) {
           // todo: replace this error with a warning once a logging system is in place
           throw new Error("entries don't match; received entry " + JSON.stringify(entry, undefined, 2) + " but entry " + JSON.stringify(local_entry, undefined, 2) + " was in log")
@@ -97,12 +99,12 @@ export class AppendOnlyLog {
   }
 
   validate(): void {
-    let entryID_counts = new Map<uuid, number>();
+    const entryID_counts = new Map<uuid, number>();
     let duplicates = false;
-    for (let creator of this.entryMap.keys()) {
-      let curr_array = this.entryMap.get(creator)!;
+    for (const creator of this.entryMap.keys()) {
+      const curr_array = this.entryMap.get(creator)!;
       for (let i = 0; i < curr_array.length; i++) {
-        let curr_entry = curr_array.at(i)!;
+        const curr_entry = curr_array.at(i)!;
         if (curr_entry.index !== i) {
           throw new Error("index of entry " + curr_entry.id + " doesn't match");
         }
@@ -123,7 +125,7 @@ export class AppendOnlyLog {
     if (duplicates) {
       let s = "";
       let first_iter = true;
-      for (let k of entryID_counts.keys()) {
+      for (const k of entryID_counts.keys()) {
         if (entryID_counts.get(k)! > 1) {
           if (!first_iter) {
             s += ", ";
@@ -137,8 +139,8 @@ export class AppendOnlyLog {
   }
 
   get_frontier(): Frontier {
-    let res = new Map<uuid, number>();
-    for (let creator of this.entryMap.keys()) {
+    const res = new Map<uuid, number>();
+    for (const creator of this.entryMap.keys()) {
       res.set(creator, this.entryMap.get(creator)!.length);
     }
     return res;
@@ -151,17 +153,17 @@ export class AppendOnlyLog {
    * @returns the LogEntries that the other replica is missing based on their frontier. In a topological order. 
    */
   _query_missing_entryIDs_ordered(frontier: Frontier): Array<uuid> {
-    let all_nodes_in_subgraph = this._query_missing_entryIDs_unordered(frontier)
-    let subgraph = new Set<uuid>(all_nodes_in_subgraph)
-    let unmarked = new Set<uuid>(all_nodes_in_subgraph);
-    let temp_marked = new Set<uuid>();
-    let resIDs = new Array<uuid>();
+    const all_nodes_in_subgraph = this._query_missing_entryIDs_unordered(frontier)
+    const subgraph = new Set<uuid>(all_nodes_in_subgraph)
+    const unmarked = new Set<uuid>(all_nodes_in_subgraph);
+    const temp_marked = new Set<uuid>();
+    const resIDs = new Array<uuid>();
     // this function marks the nodes (log-entries) in a depth first manner
-    let visit = (nodeID: uuid) => {
+    const visit = (nodeID: uuid) => {
       // base case
       if (!unmarked.has(nodeID)) return;
 
-      let current_node = this._search_entries(nodeID); 
+      const current_node = this._search_entries(nodeID); 
 
       if (temp_marked.has(nodeID)) throw new Error("This graph has a cycle!!");
       if (current_node == null) throw new Error("node " + nodeID + " is not in graph");
@@ -174,7 +176,7 @@ export class AppendOnlyLog {
       dependencies = dependencies.intersection(subgraph)
       temp_marked.add(nodeID);
 
-      for (let curr of [...dependencies]) {
+      for (const curr of [...dependencies]) {
         visit(curr);
       }
 
@@ -186,7 +188,7 @@ export class AppendOnlyLog {
     };
 
     while (unmarked.size !== 0) {
-      let nextNode = unmarked.values().next().value!;
+      const nextNode = unmarked.values().next().value!;
       visit(nextNode);
     }
 
@@ -194,10 +196,10 @@ export class AppendOnlyLog {
   }
 
   query_missing_entries_ordered(frontier: Frontier): Array<LogEntry> {
-    let resIDs = this._query_missing_entryIDs_ordered(frontier);
-    let res = new Array<LogEntry>();
-    for (let id of resIDs) {
-      let curr = this._search_entries(id);
+    const resIDs = this._query_missing_entryIDs_ordered(frontier);
+    const res = new Array<LogEntry>();
+    for (const id of resIDs) {
+      const curr = this._search_entries(id);
       console.assert(curr != null);
       res.push(curr!);
     }
@@ -205,9 +207,9 @@ export class AppendOnlyLog {
   }
 
   query_missing_operations_ordered(old_frontier: Frontier): Array<Operation> {
-    let entries = this.query_missing_entries_ordered(old_frontier);
-    let res = new Array<Operation>();
-    for (let e of entries) {
+    const entries = this.query_missing_entries_ordered(old_frontier);
+    const res = new Array<Operation>();
+    for (const e of entries) {
       res.push(e.operation);
     }
     return res;
@@ -236,8 +238,8 @@ export class AppendOnlyLog {
 
   _search_entries(id: uuid, creator?: uuid): LogEntry | null {
     if (creator == null) {
-      for (let creator of this.entryMap.keys()) {
-        for (let entry of this.entryMap.get(creator)!) {
+      for (const creator of this.entryMap.keys()) {
+        for (const entry of this.entryMap.get(creator)!) {
           if (id === entry.id){
             return entry;
           }
@@ -248,7 +250,7 @@ export class AppendOnlyLog {
     if (!this.entryMap.has(creator)) {
       Error("creator with id " + creator + " could not be found");
     }
-    for (let entry of this.entryMap.get(creator)!) {
+    for (const entry of this.entryMap.get(creator)!) {
       if (entry.id === id) {
         return entry;
       }
@@ -260,10 +262,10 @@ export class AppendOnlyLog {
     if (frontier == null) {
       frontier = new Map<uuid, number>();
     }
-    let res = new Array<uuid>();
-    for (let creator of this.entryMap.keys()) {
-      let min_val = frontier.get(creator) ?? 0;
-      for (let entry of this.entryMap.get(creator)!.slice(min_val)) {
+    const res = new Array<uuid>();
+    for (const creator of this.entryMap.keys()) {
+      const min_val = frontier.get(creator) ?? 0;
+      for (const entry of this.entryMap.get(creator)!.slice(min_val)) {
         res.push(entry.id);
       }
     }

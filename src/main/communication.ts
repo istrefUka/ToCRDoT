@@ -1,6 +1,6 @@
 import dgram, { Socket } from 'dgram';
 import { AddressInfo } from 'net';
-import { AppendOnlyLog, LogEntry, Operation, uuid } from './append_only_log'
+import { LogEntry, Operation, uuid } from './append_only_log'
 import os from 'os';
 import { toBase64, fromBase64 } from './utils'
 
@@ -41,13 +41,19 @@ export class Communication {
 
   setPort(port: number): Promise<void> {
     return new Promise<void>(
-      async (resolve) => {
-        if (this.socket) await closeSocket(this.socket);
-        const newSocket = dgram.createSocket('udp4');
-        initSocket(newSocket);
-        await bindSocket(newSocket, port);
-        this.socket = newSocket;
-        resolve();
+      (resolve) => {
+        const r = async () => {
+          const newSocket = dgram.createSocket('udp4');
+          initSocket(newSocket);
+          await bindSocket(newSocket, port);
+          this.socket = newSocket;
+          resolve();
+        }
+        if (this.socket) {
+          closeSocket(this.socket).then(r)
+        } else {
+          r();
+        }
       }
     )
   }
@@ -57,12 +63,12 @@ export class Communication {
    * 
    * @param entry The entry to be sent
    */
-  sendMessage(entry: LogEntry) :void {
+  sendMessage(entry: LogEntry): void {
     try {
-      let enc: Buffer = Buffer.from(this.encodeMessage(entry), 'utf8');
+      const enc: Buffer = Buffer.from(this.encodeMessage(entry), 'utf8');
       this.socket.send(enc, this.port, this.broadcast_ip);
       console.log('sent message:', enc.toString('utf-8'), 'to', this.broadcast_ip, this.port);
-    } catch(error) {
+    } catch (error) {
       console.log('Error:', error, '\nSending entry:', entry);
     }
   }
@@ -72,12 +78,12 @@ export class Communication {
    */
   async messageLoop() {
     let msgIndex = 0;
-    let cmd: Operation = {
-        command: 'cmd1',
-        args: [msgIndex.toString(), 'junk', 'junk'],
-      };
+    const cmd: Operation = {
+      command: 'cmd1',
+      args: [msgIndex.toString(), 'junk', 'junk'],
+    };
 
-    while(msgIndex < 10) {
+    while (msgIndex < 10) {
       this.sendMessage(new LogEntry('bigP', 'entry1', cmd, [], 0));
       msgIndex++;
       cmd.args[0] = msgIndex.toString();
@@ -94,23 +100,23 @@ export class Communication {
  * @param entry The command to be encoded
  * @returns The string encoding of the command
  */
-export function _encodeEntry(entry: LogEntry) :string {
+export function _encodeEntry(entry: LogEntry): string {
   // Encode the relevant fields
   // no base64 necessary as ids are assumed to have no spaces
   let resString = entry.creator;
   resString += ' ' + entry.id;
   resString += ' ' + entry.index;
   resString += ' ' + entry.dependencies.length;
-  for (let dep of entry.dependencies) {
+  for (const dep of entry.dependencies) {
     resString += ' ' + dep
   }
-  
-  let op = entry.operation;
+
+  const op = entry.operation;
 
   // Encode the type into base64
   resString += ' ' + toBase64(op.command);
 
-  for(let i = 0; i < op.args.length; i++) {
+  for (let i = 0; i < op.args.length; i++) {
     // Encode every argument into base64
     resString += ' ' + toBase64(op.args[i]);
   }
@@ -118,11 +124,11 @@ export function _encodeEntry(entry: LogEntry) :string {
   return resString;
 }
 
-export function decodeMessage(encMessage: string): {projectID: uuid, projectName: string, entry: LogEntry} {
-  let words: string[] = encMessage.split(' ');
-  return { 
-    projectID: words[0], 
-    projectName: fromBase64(words[1]), 
+export function decodeMessage(encMessage: string): { projectID: uuid, projectName: string, entry: LogEntry } {
+  const words: string[] = encMessage.split(' ');
+  return {
+    projectID: words[0],
+    projectName: fromBase64(words[1]),
     entry: _decodeEntry(words.slice(2).join(' '))
   };
 }
@@ -136,28 +142,28 @@ export function decodeMessage(encMessage: string): {projectID: uuid, projectName
  * @returns The decoded entry
  */
 export function _decodeEntry(encEntry: string): LogEntry {
-  let words: string[] = encEntry.split(' ');
+  const words: string[] = encEntry.split(' ');
   let curr = 0;
 
-  let creator = words[curr++];
-  let id = words[curr++];
-  let index = Number(words[curr++]);
-  let dep_len = Number(words[curr++]);
-  let dependencies = Array<uuid>();
+  const creator = words[curr++];
+  const id = words[curr++];
+  const index = Number(words[curr++]);
+  const dep_len = Number(words[curr++]);
+  const dependencies = Array<uuid>();
   for (let i = 0; i < dep_len; i++) {
     dependencies.push(words[curr++]);
   }
 
   // Decodes the command
-  let command = fromBase64(words[curr++]);
+  const command = fromBase64(words[curr++]);
 
-  let args = new Array<string>();
+  const args = new Array<string>();
   while (curr < words.length) {
     // Decodes the command arguments
     args.push(fromBase64(words[curr++]));
   }
 
-  let entry = new LogEntry(creator, id, {command, args}, dependencies, index);
+  const entry = new LogEntry(creator, id, { command, args }, dependencies, index);
   return entry;
 }
 
@@ -181,7 +187,7 @@ function bindSocket(socket: Socket, port: number) {
  * Just here for convenience as the default doesn't return a promise. 
  */
 function closeSocket(socket: Socket): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<void>((resolve) => {
     socket.close(() => resolve());
   });
 }
@@ -196,8 +202,8 @@ function initSocket(socket: Socket): void {
 
   // This event decodes the received message and logs it.
   socket.on('message', (msg, rinfo) => {
-    let received: string = msg.toString('utf8');
-    let decoded_msg = decodeMessage(received);
+    const received: string = msg.toString('utf8');
+    const decoded_msg = decodeMessage(received);
     console.log('received message:', decoded_msg, 'from', rinfo.address, rinfo.port);
   })
 
@@ -219,24 +225,24 @@ function initSocket(socket: Socket): void {
  * 
  * @returns The broadcast ip address
  */
-function findBroadcast() :string {
-  let interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = os.networkInterfaces();
+function findBroadcast(): string {
+  const interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = os.networkInterfaces();
   //console.log(interfaces);
 
   // Iterates over every network interface
-  for(let name of Object.keys(interfaces)) {
-    let iface = interfaces[name]!;
+  for (const name of Object.keys(interfaces)) {
+    const iface = interfaces[name]!;
 
     // only wireless connections are allowed
-    if(!(name.match('.*Wi-Fi.*') || name.match('.*WLAN.*') || name.match('wl.*'))) {
+    if (!(name.match('.*Wi-Fi.*') || name.match('.*WLAN.*') || name.match('wl.*'))) {
       console.log('skipped interface ' + name + ' because it is assumed not to be a wireless interface');
       continue;
     }
 
     // Not sure what info exactly is
-    for(let info of iface) {
+    for (const info of iface) {
       // Interface must be ipv4 and not a loop back interface
-      if(info.family === 'IPv4' && !info.internal) {
+      if (info.family === 'IPv4' && !info.internal) {
         let ipBits: string = '';
         let mask: string = '';
 
@@ -268,7 +274,7 @@ function findBroadcast() :string {
           // computes bitwise or
           tmp = tmp + (parseInt(char, 2) | parseInt(mask.charAt(index), 2)).toString(2);
           // turns tmp into a base10 digit every bite and appends it to the broadcast address.
-          if((index+1) % 8 == 0) {
+          if ((index + 1) % 8 == 0) {
             broadcast = broadcast + parseInt(tmp, 2).toString(10) + '.'
             tmp = '';
           }

@@ -17,7 +17,7 @@ function createWindow() {
 app.whenReady().then(async () => {
   createWindow();
 
-  let c = new Communication(9999, undefined, "project1", "Project 1");
+  const c = new Communication(9999, undefined, "project1", "Project 1");
 
   // Comment these two functions out if you don't want the message loop to run
   await c.init();
