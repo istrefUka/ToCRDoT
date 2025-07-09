@@ -1,6 +1,6 @@
 import dgram, { Socket } from 'dgram';
 import { AddressInfo } from 'net';
-import { LogEntry, Operation, uuid } from './append_only_log'
+import { AppendOnlyLog, Frontier, LogEntry, Operation, uuid } from './append_only_log'
 import os from 'os';
 import { toBase64, fromBase64 } from './utils'
 
@@ -10,8 +10,9 @@ export class Communication {
   private socket: Socket;
   private projectID: uuid;
   private projectName: string;
+  private appendOnlyLog: AppendOnlyLog;
 
-  constructor(port: number, broadcast_ip: string | undefined, projectID: uuid, projectName: string) {
+  constructor(port: number, broadcast_ip: string | undefined, projectID: uuid, projectName: string, appendOnlyLog: AppendOnlyLog) {
     this.socket = dgram.createSocket('udp4');
     if (broadcast_ip) {
       this.broadcast_ip = broadcast_ip;
@@ -19,6 +20,7 @@ export class Communication {
     this.port = port;
     this.projectID = projectID;
     this.projectName = projectName;
+    this.appendOnlyLog = appendOnlyLog;
   }
 
   init(): Promise<void> {
@@ -28,11 +30,21 @@ export class Communication {
     return bindSocket(this.socket, this.port);
   }
 
-  encodeMessage(entry: LogEntry): string {
-    let resString = this.projectID;
-    resString += ' ' + toBase64(this.projectName);
-    resString += ' ' + _encodeEntry(entry);
-    return resString;
+  encodeMessage(data: LogEntry | Frontier): string {
+    const res_arr = new Array<string>();
+    res_arr.push(this.projectID);
+    res_arr.push(toBase64(this.projectName));
+    if (data instanceof LogEntry) {
+      res_arr.push('e')
+      res_arr.push(_encodeEntry(data));
+    } else if (data instanceof Map) {
+      res_arr.push('f')
+      res_arr.push(_encodeFrontier(data as Frontier));
+    } else {
+      throw new Error('Message could not be encoded');
+    }
+    //console.log("encoded message: " + res_arr.join(' '));
+    return res_arr.join(' ');
   }
 
   setBroadcastIP(broadcast_ip: string): void {
@@ -103,36 +115,61 @@ export class Communication {
 export function _encodeEntry(entry: LogEntry): string {
   // Encode the relevant fields
   // no base64 necessary as ids are assumed to have no spaces
-  let resString = entry.creator;
-  resString += ' ' + entry.id;
-  resString += ' ' + entry.index;
-  resString += ' ' + entry.dependencies.length;
+  const res_arr = new Array<string>()
+  res_arr.push(entry.creator);
+  res_arr.push(entry.id);
+  res_arr.push(entry.index.toString());
+  res_arr.push(entry.dependencies.length.toString());
   for (const dep of entry.dependencies) {
-    resString += ' ' + dep
+    res_arr.push(dep);
   }
 
   const op = entry.operation;
-
   // Encode the type into base64
-  resString += ' ' + toBase64(op.command);
-
+  res_arr.push(toBase64(op.command));
   for (let i = 0; i < op.args.length; i++) {
     // Encode every argument into base64
-    resString += ' ' + toBase64(op.args[i]);
+    res_arr.push(toBase64(op.args[i]));
   }
-
-  return resString;
+  return res_arr.join(' ');
 }
 
-export function decodeMessage(encMessage: string): { projectID: uuid, projectName: string, entry: LogEntry } {
+function _encodeFrontier(f: Frontier): string {
+  const res_arr = new Array<string>();
+  for (const [creator, count] of f) {
+    res_arr.push(creator);
+    res_arr.push(count.toString());
+  }
+  return res_arr.join(' ');
+}
+
+export function decodeMessage(encMessage: string): { projectID: uuid, projectName: string, data: LogEntry | Frontier } {
   const words: string[] = encMessage.split(' ');
+  const projectID = words.shift();
+  const projectNameEnc = words.shift();
+  if (projectID == null || projectNameEnc == null) {
+    throw new Error("Message could not be decoded");
+  }
+  const projectName = fromBase64(projectNameEnc);
+  let data = null;
+  const datatype = words.shift();
+  const data_enc = words.join(' ');
+  switch (datatype) {
+  case 'e':
+    data = _decodeEntry(data_enc)
+    break;
+  case 'f':
+    data = _decodeFrontier(data_enc);
+    break;
+  default:
+    throw new Error("invalid datatype: '" + datatype + "', only 'e' (LogEntry) or 'f' (Frontier) allowed");
+  }
   return {
-    projectID: words[0],
-    projectName: fromBase64(words[1]),
-    entry: _decodeEntry(words.slice(2).join(' '))
+    projectID,
+    projectName,
+    data,
   };
 }
-
 
 /**
  * This function decodes a string into an entry of an append-only log. This works by splitting the received
@@ -143,28 +180,56 @@ export function decodeMessage(encMessage: string): { projectID: uuid, projectNam
  */
 export function _decodeEntry(encEntry: string): LogEntry {
   const words: string[] = encEntry.split(' ');
-  let curr = 0;
 
-  const creator = words[curr++];
-  const id = words[curr++];
-  const index = Number(words[curr++]);
-  const dep_len = Number(words[curr++]);
+  const creator = words.shift();
+  const id = words.shift();
+  const index = Number(words.shift());
+  const dep_len = Number(words.shift());
+  if (creator == null || id == null || index == null || dep_len == null) {
+    throw new Error("Entry could not be decoded");
+  }
   const dependencies = Array<uuid>();
   for (let i = 0; i < dep_len; i++) {
-    dependencies.push(words[curr++]);
+    const dep = words.shift();
+    if (dep == null) {
+      throw new Error("Entry could not be decoded");
+    }
+    dependencies.push(dep);
   }
 
   // Decodes the command
-  const command = fromBase64(words[curr++]);
+  const cmd_str = words.shift();
+  if (cmd_str == null) {
+    throw new Error("Entry could not be decoded");
+  }
+  const command = fromBase64(cmd_str);
 
   const args = new Array<string>();
-  while (curr < words.length) {
+  let arg = words.shift();
+  while (arg != null) {
     // Decodes the command arguments
-    args.push(fromBase64(words[curr++]));
+    args.push(fromBase64(arg));
+    arg = words.shift();
   }
 
   const entry = new LogEntry(creator, id, { command, args }, dependencies, index);
   return entry;
+}
+
+function _decodeFrontier(encFrontier: string): Frontier {
+  const res = new Map<uuid, number>();
+  const words = encFrontier.split(' ');
+  let creator = words.shift();
+  let count = Number(words.shift());
+  while (creator != null && count != null) {
+    res.set(creator, count);
+    creator = words.shift();
+    count = Number(words.shift());
+  }
+  if (creator != null || !isNaN(count)) {
+    throw new Error("Frontier could not be decoded");
+  }
+  return res;
 }
 
 /**

@@ -1,29 +1,6 @@
 //import {v4 as uuidv4} from 'uuid';
 import * as fs from "fs";
-
-// the following functions shall be used to serialize / deserialize the append-only log
-// source: https://stackoverflow.com/a/56150320/13166601
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function replacer(key: any, value: any) { 
-  if(value instanceof Map) {
-    return {
-      dataType: 'Map',
-      value: Array.from(value.entries()), // or with spread: value: [...value]
-    };
-  } else {
-    return value;
-  }
-}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function reviver(key: any, value: any) {
-  if(typeof value === 'object' && value !== null) {
-    if (value.dataType === 'Map') {
-      return new Map(value.value);
-    }
-  }
-  return value;
-}
-// ============
+import { mapReplacer, mapReviver } from "./utils"
 
 export type uuid = string; //`${string}-${string}-${string}-${string}-${string}`;
 
@@ -61,7 +38,7 @@ export class AppendOnlyLog {
       throw new Error("Entry with same UUID already in AppendOnlyLog: " + entryID);
     }
     if (!this._has_dependencies(dependencies)) {
-      throw new Error("Couldn't find all of the following dependencies in AOL; dependencies: " + dependencies + " AOL: " + JSON.stringify(this, replacer, 2));
+      throw new Error("Couldn't find all of the following dependencies in AOL; dependencies: " + dependencies + " AOL: " + JSON.stringify(this, mapReplacer, 2));
     }
     if (!this.entryMap.has(creator)) {
       this.entryMap.set(creator, new Array<LogEntry>());
@@ -75,7 +52,7 @@ export class AppendOnlyLog {
   update(entries: Array<LogEntry>) {
     for (const entry of entries) {
       if (!this._has_dependencies(entry.dependencies)) {
-        throw new Error("Couldn't find all of the following dependencies in AOL; dependencies: " + entry.dependencies + " AOL: " + JSON.stringify(this, replacer, 2));
+        throw new Error("Couldn't find all of the following dependencies in AOL; dependencies: " + entry.dependencies + " AOL: " + JSON.stringify(this, mapReplacer, 2));
       }
       if (!this.entryMap.has(entry.creator)) {
         this.entryMap.set(entry.creator, new Array<LogEntry>());
@@ -222,7 +199,7 @@ export class AppendOnlyLog {
    * @throws an error if the directory the file is located in doesn't exist. 
    */
   save_to(file: fs.PathLike): void {
-    fs.writeFileSync(file, JSON.stringify(this.entryMap, replacer, 2), "utf-8");
+    fs.writeFileSync(file, JSON.stringify(this.entryMap, mapReplacer, 2), "utf-8");
     console.log("wrote append-only log to file " + fs.realpathSync(file).toString());
   }
 
@@ -232,7 +209,7 @@ export class AppendOnlyLog {
    * @throws an error if the file doesn't exist. 
    */
   load_from(file: fs.PathLike): void {
-    this.entryMap = JSON.parse(fs.readFileSync(file, "utf-8").toString(), reviver);
+    this.entryMap = JSON.parse(fs.readFileSync(file, "utf-8").toString(), mapReviver);
     console.log("append-only log saved successfully");
   }
 
