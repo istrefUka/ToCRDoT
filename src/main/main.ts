@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
-import { messageLoop, initCommunication, setPort } from './communication';
+import { Communication } from './communication';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -17,9 +17,10 @@ function createWindow() {
 app.whenReady().then(async () => {
   createWindow();
 
+  let c = new Communication(9999, undefined, "project1", "Project 1");
+
   // Comment these two functions out if you don't want the message loop to run
-  await initCommunication();
-  await setPort(8888);
-  setTimeout(()=>setPort(9999), 3000)
-  await messageLoop();
+  await c.init();
+  c.messageLoop()
+  setTimeout(()=>c.setPort(9999), 3000)
 })
