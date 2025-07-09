@@ -180,40 +180,61 @@ export class Task {
         this.description = description;
       }
     changeState(newState:number):void {
-        this.stateCounter = this.stateCounter + this.state + (newState - this.state) + 3;
-        this.state = this.stateCounter % 3;
+      if(this.stateCounter >= newState){
+        return;
+      }
+        this.stateCounter = newState;
+        this.state = this.stateCounter % 3; //Die 3 steht für die Anzahl states.
+    }
+    get_State_Counter() : number{
+      return this.stateCounter;
+    }
+    get_state(): number{
+      return this.state;
     }
 }
 
+//TODO: Notification for all Methods to GUI to let the GUI redraw it.
 
-export class CRDT{
-    private projects = new Map<uuid, Project>();
+export class CRDT{ //TODO: remove operation
+    projects = new Map<uuid, Project>();
 
-  createProject(projectUUID: uuid, personUUID: uuid, title: string, append_only_log: AppendOnlyLog): Project {
+  createProject(projectUUID: uuid, personUUID: uuid, displayName: string, title: string, append_only_log?: AppendOnlyLog): Project { 
   let members = new CausalSet<Person>();
   let tasks   = new GrowOnlySet<Task>();
   let project = new Project(projectUUID, personUUID, members, tasks, title);
   this.projects.set(project.projectUUID, project);
+  let newMember: Person = {displayName: displayName,  uuid: personUUID,};
+  this.addMember(personUUID, projectUUID, displayName, personUUID, append_only_log); //ACHTUNG CreatorID und personUUID sind Gleich, mögliche Probleme?
   let operation:Operation = {command: "createProject", args: [ projectUUID, personUUID, title ]};
   let dependencies: uuid[] = [];
-  append_only_log.add_operation(personUUID, operation, dependencies, projectUUID);
+  if(!append_only_log){
+    return project;
+  }
+  append_only_log!.add_operation(personUUID, operation, dependencies, projectUUID);
   return project;
+}
+
+getProjects(): Map<uuid, Project>{
+  return this.projects;
 }
 
 
 
-
-addMember(creatorId: uuid, projectId: uuid, displayName: string, personUUID: uuid, append_only_log: AppendOnlyLog): void {
+addMember(creatorId: uuid, projectId: uuid, displayName: string, personUUID: uuid, append_only_log?: AppendOnlyLog): void { //TODO: Add Event notification for the GUI to tell it that there has been a member added.
     let project = this.projects.get(projectId);
     if (!project) throw new Error(`Projekt ${projectId} nicht gefunden`);
     let newMember: Person = {displayName: displayName,  uuid: personUUID,};
     project.members.add(newMember);
     let operation:Operation = {command: "addMember", args: [creatorId, projectId, displayName, personUUID]}; //TODO: Lösung finden, um Person zu übergeben.
     let dependencies : uuid[] = [projectId];
+    if(!append_only_log){
+    return;
+  }
     append_only_log.add_operation(creatorId, operation, dependencies, personUUID);
   }
 
-changeName(projectId: uuid, personUuid: uuid, newName: string, append_only_log: AppendOnlyLog): void {
+changeName(projectId: uuid, personUuid: uuid, newName: string, append_only_log?: AppendOnlyLog): void {
     const project = this.projects.get(projectId);
     if (!project) {
       throw new Error(`Projekt ${projectId} nicht gefunden`);
@@ -225,14 +246,9 @@ changeName(projectId: uuid, personUuid: uuid, newName: string, append_only_log: 
     if (!oldPerson) {
       throw new Error(`Person ${personUuid} nicht in Projekt ${projectId}`);
     }
+    oldPerson.displayName = newName;
 
     // 2) Entferne die alte Version und füge die neue mit geändertem Namen hinzu
-    project.members.remove(oldPerson);
-    let updatedPerson: Person = {
-      uuid: personUuid,
-      displayName: newName,
-    };
-    project.members.add(updatedPerson);
 
     // 3) Operation fürs Log bauen
     let operation: Operation = {
@@ -241,21 +257,19 @@ changeName(projectId: uuid, personUuid: uuid, newName: string, append_only_log: 
     };
 
     // 4) Abhängigkeiten – hier einfach das Projekt selbst
-    let dependencies: uuid[] = [projectId];
+    let dependencies: uuid[] = [projectId, personUuid]; //Welches nehmen? oder beide?
 
     // 5) Neuen Log-Eintrag mit frischer entryID
     const entryID: uuid = uuidv4();
-    append_only_log.add_operation(
-      personUuid,
-      operation,
-      dependencies,
-      entryID
-    );
+    if(!append_only_log){
+    return;
+  }
+    append_only_log.add_operation(personUuid, operation, dependencies, projectId+personUuid+newName); //Welche entryID? Ist es Oke newName auch mitzugeben, seitdem auch
   }
 
 
   
-  createTask(projectUUID:uuid, taskUUID: uuid, personUUID: uuid, displayName: string, title: string, description: string, append_only_log: AppendOnlyLog): Task{
+  createTask(projectUUID:uuid, taskUUID: uuid, personUUID: uuid, title: string, description: string, append_only_log?: AppendOnlyLog): Task{
     let project = this.projects.get(projectUUID);
     if (!project) {
       throw new Error(`Projekt ${projectUUID} nicht gefunden`);
@@ -265,39 +279,38 @@ changeName(projectId: uuid, personUuid: uuid, newName: string, append_only_log: 
     project!.tasks.add(task);
     let operation: Operation = {
       command: "createTask",
-      args: [projectUUID, personUUID, displayName, title, description],
+      args: [projectUUID, personUUID, title, description],
     };
     let dependencies: uuid[] = [projectUUID];
-
-    append_only_log.add_operation(personUUID, operation, dependencies, taskUUID)
+    if(!append_only_log){
+    return task;
+  }
+    append_only_log!.add_operation(personUUID, operation, dependencies, taskUUID)
     return task;
   }
 
-  setTaskState(personUUID: uuid, projectUUID:uuid, taskUUID: uuid, newTaskState: number, append_only_log: AppendOnlyLog): void{
+  //Als eingabe bei TaskState wird stateCounter + neuer State erwartet.
+  setTaskState(personUUID: uuid, projectUUID:uuid, taskUUID: uuid, newTaskState: number, append_only_log?: AppendOnlyLog): void{
     let project = this.projects.get(projectUUID);
     if (!project) {
       throw new Error(`Projekt ${projectUUID} nicht gefunden`);
     }
-    if(newTaskState > 2){
-        throw new Error(`invalider Taskstate`);
-    }
      // 1) Pull out the live set of tasks
     let tasks = project.tasks.get_set();
-
-  // 2) Find the one with our ID
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-
-    // 3) Change its state
     task.changeState(newTaskState);
 
     let operation: Operation = {
-      command: "createTask",
+      command: "setTaskState",
       args: [personUUID, projectUUID, taskUUID, newTaskState.toString()],
     };
-    let dependencies: uuid[] = [projectUUID, taskUUID];
+    let dependencies: uuid[] = [taskUUID];
+    if(!append_only_log){
+    return;
+  }
     //add_operation(creator: uuid, operation: Operation, dependencies: uuid[], entryID: uuid)
-    append_only_log.add_operation(personUUID, operation, dependencies, taskUUID)    
+    append_only_log.add_operation(personUUID, operation, dependencies, taskUUID+newTaskState.toString())   //TODO: Gute EntryID finden, Nur Task als dependency oder gerade alles?
   }
 
 
