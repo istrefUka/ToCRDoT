@@ -70,7 +70,7 @@ export class AppendOnlyLog {
         throw new Error("Tried to add entry that skips spot in log of creator " + entry.creator);
       }
       if (curr_len > entry.index) {
-        const local_entry = curr[entry.index];
+        const local_entry = curr![entry.index];
         if (JSON.stringify(local_entry) !== JSON.stringify(entry)) {
           // todo: replace this error with a warning once a logging system is in place
           throw new Error("entries don't match; received entry " + JSON.stringify(entry, undefined, 2) + " but entry " + JSON.stringify(local_entry, undefined, 2) + " was in log")
@@ -155,7 +155,7 @@ export class AppendOnlyLog {
       const dependencies = new Set(current_node.dependencies);
       if (current_node.index > 0) {
         // the implicitly defined dependency to the previous entry log of the same person is added
-        dependencies.add(this.entryMap.get(current_node.creator)[current_node.index - 1].id);
+        dependencies.add(this.entryMap.get(current_node.creator)![current_node.index - 1].id);
       }
       //dependencies = dependencies.intersection(subgraph)
       dependencies.forEach((s) => {
