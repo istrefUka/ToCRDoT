@@ -1,6 +1,7 @@
 //import {v4 as uuidv4} from 'uuid';
 import * as fs from "fs";
 import { mapReplacer, mapReviver } from "./utils"
+import path from "path";
 
 export type uuid = string; //`${string}-${string}-${string}-${string}-${string}`;
 
@@ -32,7 +33,13 @@ export class LogEntry {
 export type Frontier = Map<uuid, number>;
 
 export class AppendOnlyLog {
+  private path: string;
   public entryMap = new Map<uuid, LogEntry[]>();
+
+  constructor(path: string) {
+    this.path = path;
+  }
+
   add_operation(creator: uuid, operation: Operation, dependencies: uuid[], entryID: uuid) {
     if (this._search_entries(entryID) != null) {
       throw new Error("Entry with same UUID already in AppendOnlyLog: " + entryID);
@@ -63,7 +70,7 @@ export class AppendOnlyLog {
         throw new Error("Tried to add entry that skips spot in log of creator " + entry.creator);
       }
       if (curr_len > entry.index) {
-        const local_entry = curr!.at(entry.index)!;
+        const local_entry = curr[entry.index];
         if (JSON.stringify(local_entry) !== JSON.stringify(entry)) {
           // todo: replace this error with a warning once a logging system is in place
           throw new Error("entries don't match; received entry " + JSON.stringify(entry, undefined, 2) + " but entry " + JSON.stringify(local_entry, undefined, 2) + " was in log")
@@ -81,7 +88,7 @@ export class AppendOnlyLog {
     for (const creator of this.entryMap.keys()) {
       const curr_array = this.entryMap.get(creator)!;
       for (let i = 0; i < curr_array.length; i++) {
-        const curr_entry = curr_array.at(i)!;
+        const curr_entry = curr_array[i];
         if (curr_entry.index !== i) {
           throw new Error("index of entry " + curr_entry.id + " doesn't match");
         }
@@ -145,12 +152,17 @@ export class AppendOnlyLog {
       if (temp_marked.has(nodeID)) throw new Error("This graph has a cycle!!");
       if (current_node == null) throw new Error("node " + nodeID + " is not in graph");
 
-      let dependencies = new Set(current_node.dependencies);
+      const dependencies = new Set(current_node.dependencies);
       if (current_node.index > 0) {
         // the implicitly defined dependency to the previous entry log of the same person is added
-        dependencies.add(this.entryMap.get(current_node.creator)!.at(current_node.index - 1)!.id);
+        dependencies.add(this.entryMap.get(current_node.creator)[current_node.index - 1].id);
       }
-      dependencies = dependencies.intersection(subgraph)
+      //dependencies = dependencies.intersection(subgraph)
+      dependencies.forEach((s) => {
+        if (!subgraph.has(s)) {
+          dependencies.delete(s);
+        }
+      })
       temp_marked.add(nodeID);
 
       for (const curr of [...dependencies]) {
@@ -198,9 +210,13 @@ export class AppendOnlyLog {
    * @param file path of file to store the append-only log in. 
    * @throws an error if the directory the file is located in doesn't exist. 
    */
-  save_to(file: fs.PathLike): void {
-    fs.writeFileSync(file, JSON.stringify(this.entryMap, mapReplacer, 2), "utf-8");
-    console.log("wrote append-only log to file " + fs.realpathSync(file).toString());
+  save(): void {
+    const dir = path.dirname(this.path);
+    if (!fs.existsSync(dir)){
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(this.path, JSON.stringify(this.entryMap, mapReplacer, 2), "utf-8");
+    console.log("wrote append-only log to file " + fs.realpathSync(this.path).toString());
   }
 
   /**
@@ -208,8 +224,8 @@ export class AppendOnlyLog {
    * @param file path of file to load the append-only log from. 
    * @throws an error if the file doesn't exist. 
    */
-  load_from(file: fs.PathLike): void {
-    this.entryMap = JSON.parse(fs.readFileSync(file, "utf-8").toString(), mapReviver);
+  load(): void {
+    this.entryMap = JSON.parse(fs.readFileSync(this.path, "utf-8").toString(), mapReviver);
     console.log("append-only log saved successfully");
   }
 
