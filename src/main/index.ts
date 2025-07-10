@@ -22,6 +22,7 @@ const path_aol = path_appData + '/projects/project1/aol.json';
 const a = new AppendOnlyLog(path_aol);
 let personUUID = uuidv4();
 const c = new Communication(8080, undefined, "project1", "Project 1", a);
+c.init();
 
 const createWindow = (): void => {
   // Create the browser window.

@@ -2,7 +2,7 @@ import dgram, { Socket } from 'dgram';
 import { AddressInfo } from 'net';
 import { AppendOnlyLog, Frontier, LogEntry, Operation, uuid } from './append_only_log'
 import os from 'os';
-import { toBase64, fromBase64 } from './utils'
+import { toBase64, fromBase64, mapReplacer, isLogEntry, isFrontier } from './utils'
 
 export class Communication {
   private broadcast_ip = findBroadcast();
@@ -41,7 +41,8 @@ export class Communication {
     socket.on('message', (msg, rinfo) => {
       const received: string = msg.toString('utf8');
       const decoded_msg = decodeMessage(received);
-      console.log('received message:', decoded_msg, 'from', rinfo.address, rinfo.port);
+      console.log('received message:', received);
+      console.log('received message (decoded):', decoded_msg, 'from', rinfo.address, rinfo.port);
       this.handleMessage(decoded_msg);
     })
 
@@ -56,10 +57,10 @@ export class Communication {
   }
 
   handleMessage(msg: {projectID: uuid, projectName: string, data: LogEntry | Frontier}) {
-    if (msg.data instanceof LogEntry) {
+    if (isLogEntry(msg.data)) {
       this.appendOnlyLog.update([msg.data]);
       this.appendOnlyLog.save();
-    } else if (msg.data instanceof Map) {
+    } else if (isFrontier(msg.data)) {
       const frontier = msg.data as Frontier;
       for (const entry of this.appendOnlyLog.query_missing_entries_ordered(frontier)) {
         this.sendMessage(entry);
@@ -77,10 +78,10 @@ export class Communication {
     const res_arr = new Array<string>();
     res_arr.push(this.projectID);
     res_arr.push(toBase64(this.projectName));
-    if (data instanceof LogEntry) {
+    if (isLogEntry(data)) {
       res_arr.push('e')
       res_arr.push(_encodeEntry(data));
-    } else if (data instanceof Map) {
+    } else if (isFrontier(data)) {
       res_arr.push('f')
       res_arr.push(_encodeFrontier(data as Frontier));
     } else {
@@ -261,6 +262,9 @@ export function _decodeEntry(encEntry: string): LogEntry {
 
 function _decodeFrontier(encFrontier: string): Frontier {
   const res = new Map<uuid, number>();
+  if (encFrontier === '') {
+    return res;
+  }
   const words = encFrontier.split(' ');
   let creator = words.shift();
   let count = Number(words.shift());
