@@ -1,3 +1,5 @@
+import { Frontier, LogEntry } from "./append_only_log";
+
 export function toBase64(input: string): string {
   return Buffer.from(input, "utf-8").toString('base64');
 }
@@ -29,3 +31,15 @@ export function mapReviver(key: any, value: any) {
   return value;
 }
 // ============
+
+export function isLogEntry(obj: any): obj is LogEntry {
+  const o = obj as LogEntry;
+  return o.creator !== undefined && o.dependencies !== undefined && o.id !== undefined && o.index !== undefined && o.operation !== undefined;
+}
+export function isFrontier(obj: any): obj is Frontier {
+  const o = obj as Frontier;
+  if (obj instanceof Map) {
+    return true;
+  }
+  return false;
+}

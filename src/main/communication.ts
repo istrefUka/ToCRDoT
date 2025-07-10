@@ -2,7 +2,7 @@ import dgram, { Socket } from 'dgram';
 import { AddressInfo } from 'net';
 import { AppendOnlyLog, Frontier, LogEntry, Operation, uuid } from './append_only_log'
 import os from 'os';
-import { toBase64, fromBase64 } from './utils'
+import { toBase64, fromBase64, mapReplacer, isLogEntry, isFrontier } from './utils'
 
 export class Communication {
   private broadcast_ip = findBroadcast();
@@ -25,19 +25,63 @@ export class Communication {
 
   init(): Promise<void> {
     this.socket = dgram.createSocket('udp4');
-    initSocket(this.socket);
+    this.initSocket(this.socket);
 
     return bindSocket(this.socket, this.port);
+  }
+
+  initSocket(socket: Socket): void {
+    // This event prints and error message and closes the socket.
+    socket.on('error', (err) => {
+      console.error('client error:', err.stack);
+      socket.close();
+    })
+
+    // This event decodes the received message and logs it.
+    socket.on('message', (msg, rinfo) => {
+      const received: string = msg.toString('utf8');
+      const decoded_msg = decodeMessage(received);
+      console.log('received message:', received);
+      console.log('received message (decoded):', decoded_msg, 'from', rinfo.address, rinfo.port);
+      this.handleMessage(decoded_msg);
+    })
+
+    // This event logs where the instance is listening on.
+    socket.on('listening', () => {
+      if (socket == null) {
+        throw new Error('Socket undefined');
+      }
+      const address: AddressInfo = socket.address();
+      console.log('listening on:', address.address, ':', address.port);
+    })
+  }
+
+  handleMessage(msg: {projectID: uuid, projectName: string, data: LogEntry | Frontier}) {
+    if (isLogEntry(msg.data)) {
+      this.appendOnlyLog.update([msg.data]);
+      this.appendOnlyLog.save();
+    } else if (isFrontier(msg.data)) {
+      const frontier = msg.data as Frontier;
+      for (const entry of this.appendOnlyLog.query_missing_entries_ordered(frontier)) {
+        this.sendMessage(entry);
+      }
+    } else {
+      throw new Error("Message invalid");
+    }
+  }
+
+  sendFrontier() {
+    this.sendMessage(this.appendOnlyLog.get_frontier());
   }
 
   encodeMessage(data: LogEntry | Frontier): string {
     const res_arr = new Array<string>();
     res_arr.push(this.projectID);
     res_arr.push(toBase64(this.projectName));
-    if (data instanceof LogEntry) {
+    if (isLogEntry(data)) {
       res_arr.push('e')
       res_arr.push(_encodeEntry(data));
-    } else if (data instanceof Map) {
+    } else if (isFrontier(data)) {
       res_arr.push('f')
       res_arr.push(_encodeFrontier(data as Frontier));
     } else {
@@ -56,7 +100,7 @@ export class Communication {
       (resolve) => {
         const r = async () => {
           const newSocket = dgram.createSocket('udp4');
-          initSocket(newSocket);
+          this.initSocket(newSocket);
           await bindSocket(newSocket, port);
           this.socket = newSocket;
           resolve();
@@ -73,15 +117,15 @@ export class Communication {
   /**
    * This method sends an entry of an append-only log to a specified ip.
    * 
-   * @param entry The entry to be sent
+   * @param data The entry to be sent
    */
-  sendMessage(entry: LogEntry): void {
+  sendMessage(data: LogEntry | Frontier): void {
     try {
-      const enc: Buffer = Buffer.from(this.encodeMessage(entry), 'utf8');
+      const enc: Buffer = Buffer.from(this.encodeMessage(data), 'utf8');
       this.socket.send(enc, this.port, this.broadcast_ip);
       console.log('sent message:', enc.toString('utf-8'), 'to', this.broadcast_ip, this.port);
     } catch (error) {
-      console.log('Error:', error, '\nSending entry:', entry);
+      console.log('Error:', error, '\nSending entry:', data);
     }
   }
 
@@ -218,6 +262,9 @@ export function _decodeEntry(encEntry: string): LogEntry {
 
 function _decodeFrontier(encFrontier: string): Frontier {
   const res = new Map<uuid, number>();
+  if (encFrontier === '') {
+    return res;
+  }
   const words = encFrontier.split(' ');
   let creator = words.shift();
   let count = Number(words.shift());
@@ -257,32 +304,6 @@ function closeSocket(socket: Socket): Promise<void> {
   });
 }
 
-// TODO this function has to be integrated with the append-only log.
-function initSocket(socket: Socket): void {
-  // This event prints and error message and closes the socket.
-  socket.on('error', (err) => {
-    console.error('client error:', err.stack);
-    socket.close();
-  })
-
-  // This event decodes the received message and logs it.
-  socket.on('message', (msg, rinfo) => {
-    const received: string = msg.toString('utf8');
-    const decoded_msg = decodeMessage(received);
-    console.log('received message:', decoded_msg, 'from', rinfo.address, rinfo.port);
-  })
-
-  // This event logs where the instance is listening on.
-  socket.on('listening', () => {
-    if (socket == null) {
-      throw new Error('Socket undefined');
-    }
-    const address: AddressInfo = socket.address();
-    console.log('listening on:', address.address, ':', address.port);
-  })
-}
-
-
 
 /**
  * This function finds the highest possible ip address on a wireless interface network and returns it.
@@ -308,8 +329,8 @@ function findBroadcast(): string {
     for (const info of iface) {
       // Interface must be ipv4 and not a loop back interface
       if (info.family === 'IPv4' && !info.internal) {
-        let ipBits: string = '';
-        let mask: string = '';
+        let ipBits = '';
+        let mask = '';
 
         // Translating the ip address into 32 bits
         info.address.split('.').forEach((byte) => {
