@@ -4,56 +4,149 @@ import { AppendOnlyLog, Frontier, LogEntry, Operation, uuid } from './append_onl
 import os from 'os';
 import { toBase64, fromBase64, mapReplacer, isLogEntry, isFrontier } from './utils'
 
-export class Communication {
-  private broadcast_ip = findBroadcast();
-  private port: number;
-  private socket: Socket;
-  private projectID: uuid;
-  private projectName: string;
-  private appendOnlyLog: AppendOnlyLog;
+class BaseCommunication {
+  public broadcast_ip: string;
+  public socket: Socket;
+  private _port: number;
+  private onMessageCallback: ((msg: string, rinfo: MessageInfo) => void) | undefined = undefined;
 
-  constructor(port: number, broadcast_ip: string | undefined, projectID: uuid, projectName: string, appendOnlyLog: AppendOnlyLog) {
+  constructor(broadcast_ip: string | undefined, port: number) {
     this.socket = dgram.createSocket('udp4');
-    if (broadcast_ip) {
-      this.broadcast_ip = broadcast_ip;
-    }
-    this.port = port;
-    this.projectID = projectID;
-    this.projectName = projectName;
-    this.appendOnlyLog = appendOnlyLog;
+    this.broadcast_ip = broadcast_ip ?? findBroadcast();
+    this._port = port;
   }
 
   init(): Promise<void> {
     this.socket = dgram.createSocket('udp4');
-    this.initSocket(this.socket);
+    this.initSocket();
 
-    return bindSocket(this.socket, this.port);
+    return bindSocket(this.socket, this._port);
   }
 
-  initSocket(socket: Socket): void {
-    // This event prints and error message and closes the socket.
-    socket.on('error', (err) => {
-      console.error('client error:', err.stack);
-      socket.close();
-    })
+  close(): Promise<void> {
+    return closeSocket(this.socket);
+  }
 
-    // This event decodes the received message and logs it.
-    socket.on('message', (msg, rinfo) => {
-      const received: string = msg.toString('utf8');
-      const decoded_msg = decodeMessage(received);
-      console.log('received message:', received);
-      console.log('received message (decoded):', decoded_msg, 'from', rinfo.address, rinfo.port);
-      this.handleMessage(decoded_msg);
+  private initSocket() {
+    // This event prints and error message and closes the socket.
+    this.socket.on('error', (err) => {
+      console.error('client error:', err.stack);
+      this.socket.close();
     })
 
     // This event logs where the instance is listening on.
-    socket.on('listening', () => {
-      if (socket == null) {
-        throw new Error('Socket undefined');
-      }
-      const address: AddressInfo = socket.address();
+    this.socket.on('listening', () => {
+      const address: AddressInfo = this.socket.address();
       console.log('listening on:', address.address, ':', address.port);
     })
+  }
+
+  get port() {
+    return this._port;
+  }
+
+  send(msg: Buffer) {
+    this.socket.send(msg);
+    console.log('sent message:', msg.toString('utf-8'), 'to', this.broadcast_ip, this._port);
+  }
+
+  /**
+   * This method replaces the callback that is currently used when a message arrives with the new callback. 
+   * @param onMessageCallback callback to be called when a message arrives
+   */
+  onMessage(onMessageCallback: (msg: string, rinfo: MessageInfo) => void) {
+    if (this.onMessageCallback != null) {
+      this.socket.off('message', this.onMessageCallback);
+    }
+    this.socket.on('message', onMessageCallback);
+    this.onMessageCallback = onMessageCallback;
+  }
+
+  setBroadcastIP(broadcast_ip: string): void {
+    this.broadcast_ip = broadcast_ip;
+  }
+
+  setPort(port: number): Promise<void> {
+    return new Promise<void>(
+      (resolve) => {
+        const r = async () => {
+          await closeSocket(this.socket);
+          this.socket = dgram.createSocket('udp4');
+          this.initSocket();
+          if (this.onMessageCallback != null) {
+            this.onMessage(this.onMessageCallback);
+          }
+          await bindSocket(this.socket, port);
+          this._port = port;
+          resolve();
+        }
+        if (this.socket) {
+          closeSocket(this.socket).then(r)
+        } else {
+          r();
+        }
+      }
+    )
+  }
+}
+
+/**
+ * This class implements the communication necessary for when a project is open. 
+ */
+export class ProjectCommunication {
+  private projectID: uuid;
+  private projectName: string;
+  private appendOnlyLog: AppendOnlyLog;
+  private crdt_update_callback: (ops: Operation[]) => void;
+  public delay_ms: number;
+  private communication: BaseCommunication;
+
+  /**
+   * The init-method should be called after this constructor. 
+   * @param port 
+   * @param broadcast_ip 
+   * @param projectID UUID of project that is currently open
+   * @param projectName 
+   * @param appendOnlyLog append-only log that the crdt-object shall use. 
+   * @param crdt_update_callback this callback is executed when the append-only log changes. It receives the changes as operations since the last update. 
+   */
+  constructor(port: number, broadcast_ip: string | undefined, projectID: uuid, projectName: string, appendOnlyLog: AppendOnlyLog, crdt_update_callback: (ops: Operation[]) => void) {
+    this.communication = new BaseCommunication(broadcast_ip, port);
+    this.projectID = projectID;
+    this.projectName = projectName;
+    this.appendOnlyLog = appendOnlyLog;
+    this.crdt_update_callback = crdt_update_callback;
+    this.delay_ms = 10000;
+  }
+
+  get port() {
+    return this.communication.port;
+  }
+
+  get broadcast_ip() {
+    return this.communication.broadcast_ip;
+  }
+
+  close(): Promise<void> {
+    return this.communication.close();
+  }
+
+  init(): Promise<void> {
+    return new Promise(async (resolve) => {
+      await this.communication.init();
+      this.communication.onMessage((msg, rinfo) => {
+        const decoded_msg = decodeMessage(msg);
+        if (decoded_msg.projectID !== this.projectID) {
+          return;
+        }
+        console.log('received message:', msg);
+        console.log('received message (decoded):', decoded_msg, 'from', rinfo.address, rinfo.port);
+        const o = this.appendOnlyLog.get_frontier();
+        this.handleMessage(decoded_msg);
+        this.crdt_update_callback(this.appendOnlyLog.query_missing_operations_ordered(o))
+      })
+      resolve();
+    });
   }
 
   handleMessage(msg: {projectID: uuid, projectName: string, data: LogEntry | Frontier}) {
@@ -92,26 +185,11 @@ export class Communication {
   }
 
   setBroadcastIP(broadcast_ip: string): void {
-    this.broadcast_ip = broadcast_ip;
+    this.communication.setBroadcastIP(broadcast_ip);
   }
 
   setPort(port: number): Promise<void> {
-    return new Promise<void>(
-      (resolve) => {
-        const r = async () => {
-          const newSocket = dgram.createSocket('udp4');
-          this.initSocket(newSocket);
-          await bindSocket(newSocket, port);
-          this.socket = newSocket;
-          resolve();
-        }
-        if (this.socket) {
-          closeSocket(this.socket).then(r)
-        } else {
-          r();
-        }
-      }
-    )
+    return this.communication.setPort(port);
   }
 
   /**
@@ -122,31 +200,78 @@ export class Communication {
   sendMessage(data: LogEntry | Frontier): void {
     try {
       const enc: Buffer = Buffer.from(this.encodeMessage(data), 'utf8');
-      this.socket.send(enc, this.port, this.broadcast_ip);
-      console.log('sent message:', enc.toString('utf-8'), 'to', this.broadcast_ip, this.port);
+      this.communication.send(enc);
     } catch (error) {
       console.log('Error:', error, '\nSending entry:', data);
     }
   }
 
   /**
-   * This function sends a junk message to the broadcast ip every second. Later to be used to send frontiers.
+   * This method sends the frontier repeatedly with the delay specified in this.delay_ms.
    */
   async messageLoop() {
     let msgIndex = 0;
-    const cmd: Operation = {
-      command: 'cmd1',
-      args: [msgIndex.toString(), 'junk', 'junk'],
-    };
 
-    while (msgIndex < 10) {
-      this.sendMessage(new LogEntry('bigP', 'entry1', cmd, [], 0));
+    while (true) {
+      this.sendMessage(this.appendOnlyLog.get_frontier());
       msgIndex++;
-      cmd.args[0] = msgIndex.toString();
-      await sleep(1000);
+      await sleep(this.delay_ms);
     }
   }
 }
+
+/**
+ * This class is used to listen for other projects on a given interface. 
+ * Use the init-method to specify in a callback what happens when a message is received and start listening. 
+ */
+export class ProjectListener {
+  private communication: BaseCommunication;
+
+  /**
+   * Set initial interface of communication. 
+   * @param broadcast_ip broadcast-ip to use for receiving. If undefined, it tries to find a broadcast-ip on it's own. 
+   * @param port 
+   */
+  constructor(broadcast_ip: string | undefined, port: number) {
+    this.communication = new BaseCommunication(broadcast_ip, port);
+  }
+
+  /**
+   * Initialize the listening with a callback. 
+   * @param onMessageCallback This is the callback for when a message arrives. NOTE: should be used for creating a popup 
+   */
+  init(onMessageCallback: (msg: string, rinfo: MessageInfo) => void) {
+    this.communication.init();
+    this.communication.onMessage(onMessageCallback);
+  }
+
+  get port() {
+    return this.communication.port;
+  }
+
+  get broadcast_ip() {
+    return this.communication.broadcast_ip;
+  }
+
+  setPort(port: number): Promise<void> {
+    return this.communication.setPort(port);
+  }
+
+  setBroadcastIP(broadcast_ip: string) {
+    this.communication.setBroadcastIP(broadcast_ip);
+  }
+
+  close() {
+    this.communication.close();
+  }
+}
+
+type MessageInfo = {
+  address: string,
+  family: string,
+  port: number,
+  size: number,
+};
 
 /**
  * This function encodes a command into a string. This works by first converting 

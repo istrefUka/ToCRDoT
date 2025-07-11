@@ -1,9 +1,10 @@
+
 export {};
 
 declare global {
     interface Window {
         electronAPI: {
-            submitOperation: (op: Operation) => void;
+            submitOperation: (op: Operation, deps: uuid[]) => void;
             sendFrontier: () => void;
             deleteLocal: () => void;
         }

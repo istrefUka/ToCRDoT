@@ -26,13 +26,19 @@
  * ```
  */
 
+import { uuid } from './append_only_log';
 import './index.css';
 const submitButton = document.getElementById('submit-btn');
 const cmdInput = document.getElementById('cmd');
 const argsInput = document.getElementById('args');
+const depsInput = document.getElementById('deps');
 submitButton.addEventListener('click', () => {
-    console.log('renderer saw button click with input values:', cmdInput.value, argsInput.value);
-    window.electronAPI.submitOperation({command: cmdInput.value, args: argsInput.value.split(',')})
+    console.log('renderer saw button click with input values:', cmdInput.value, argsInput.value, depsInput.value);
+    let deps = new Array<uuid>();
+    if (depsInput.value !== '') {
+        deps = depsInput.value.split(',');
+    }
+    window.electronAPI.submitOperation({command: cmdInput.value, args: argsInput.value.split(',')}, deps);
 })
 
 const deleteButton = document.getElementById('delete-btn');
@@ -46,5 +52,6 @@ frontierButton.addEventListener('click', () => {
     console.log("frontier button clicked!");
     window.electronAPI.sendFrontier();
 })
+
 
 console.log('👋 This message is being logged by "renderer.js", included via webpack');

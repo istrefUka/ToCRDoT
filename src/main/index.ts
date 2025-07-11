@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { Notification } from 'electron';
-import { Communication } from './communication';
+import { ProjectCommunication } from './communication';
 import { AppendOnlyLog, LogEntry, Operation, uuid } from './append_only_log';
 import { v4 as uuidv4 } from 'uuid';
 import { mapReplacer } from './utils';
@@ -21,7 +21,7 @@ const path_user = path_appData + '/user.txt';
 const path_aol = path_appData + '/projects/project1/aol.json';
 const a = new AppendOnlyLog(path_aol);
 let personUUID = uuidv4();
-const c = new Communication(8080, undefined, "project1", "Project 1", a);
+const c = new ProjectCommunication(8080, undefined, "project1", "Project 1", a, (ops) => {return;});
 c.init();
 
 const createWindow = (): void => {
@@ -54,8 +54,8 @@ const createWindow = (): void => {
   //mainWindow.webContents.openDevTools();
 };
 
-function handleSubmitOperation(event: Electron.IpcMainEvent, operation: Operation) {
-  a.add_operation(personUUID, operation, [], uuidv4());
+function handleSubmitOperation(event: Electron.IpcMainEvent, operation: Operation, deps: uuid[]) {
+  a.add_operation(personUUID, operation, deps, uuidv4());
   a.save();
 
   console.log(JSON.stringify(a, mapReplacer, 2));
