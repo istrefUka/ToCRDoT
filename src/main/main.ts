@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
-import { Communication } from './communication';
+import { ProjectCommunication } from './communication';
 import { AppendOnlyLog } from './append_only_log';
 
 function createWindow() {
@@ -18,7 +18,7 @@ function createWindow() {
 app.whenReady().then(async () => {
   createWindow();
 
-  const c = new Communication(9999, undefined, "project1", "Project 1", new AppendOnlyLog());
+  const c = new ProjectCommunication(9999, undefined, "project1", "Project 1", new AppendOnlyLog(""), () => {});
 
   // Comment these two functions out if you don't want the message loop to run
   await c.init();
