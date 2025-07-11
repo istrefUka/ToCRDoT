@@ -193,13 +193,13 @@ export class GrowOnlySet<T> {
 export class Project {
   append_only_log: AppendOnlyLog;
   projectUUID: uuid;
-  creator: uuid = uuidv4(); //Gute Lösung? Alternative wäre nur anfänglicher Kostruktor und mit init methode.
+  creator: uuid | undefined; //Gute Lösung? Alternative wäre nur anfänglicher Kostruktor und mit init methode.
   members: GrowOnlySet<Person>;
   tasks: GrowOnlySet<Task>;
   title: string;
 
   /**
-   * AOL muss geladen sein bevor er dieser Methode übergeben wird.
+   * AOL muss geladen sein bevor er dieser Methode übergeben wird. Init bei neu kreiertem Projekt, sonst charge.
    * @param projectUUID 
    * @param title 
    * @param append_only_log 
@@ -236,7 +236,7 @@ export class Project {
     this.append_only_log.save();
   }
 
-  charge() { //TODO: Macht das Sinn?
+  charge() { 
     const ops = this.append_only_log.query_missing_operations_ordered(new Map());
     this.update(ops);
   }
