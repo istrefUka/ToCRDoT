@@ -1,4 +1,5 @@
 import path from "path";
+import * as fs from 'node:fs'
 import { uuid, LogEntry, Person, AppendOnlyLog, Operation } from "./append_only_log";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -20,17 +21,17 @@ export class CausalSet<T> {
     return val;
   }
 
-  addAOL(x: T, value:number): void {
+  addAOL(x: T, value: number): void {
 
     const val = this.s.get(x) ?? 0;
     if (val % 2 === 1) {
       console.log(`add: value ${x} already in set`);
       return;
     }
-    if(val >= value){
+    if (val >= value) {
       return;
     }
-    
+
     this.s.set(x, value);
     return;
   }
@@ -45,17 +46,17 @@ export class CausalSet<T> {
     return val;
   }
 
-  removeAOL(x: T, value:number): void {
+  removeAOL(x: T, value: number): void {
 
     const val = this.s.get(x) ?? 0;
     if (val % 2 === 0) {
       console.log(`remove: value ${x} already removed`);
       return;
     }
-    if(val >= value){
+    if (val >= value) {
       return;
     }
-    
+
     this.s.set(x, value);
     return;
   }
@@ -187,7 +188,8 @@ export class GrowOnlySet<T> {
 //TODO: Notification for all Methods to GUI to let the GUI redraw it.
 //TODO: 2 Methoden pro Operation, da wo es Sinn macht.
 //TODO: ADD and REMOVE ASSIGNEE methods
-//TODO: update Method
+//TODO: update Methode
+//TODO: boolean statt AOL übergeben
 export class Project {
   append_only_log: AppendOnlyLog;
   projectUUID: uuid;
@@ -196,36 +198,46 @@ export class Project {
   tasks: GrowOnlySet<Task>;
   title: string;
 
-  // handleMessage(msg: {projectID: uuid, projectName: string, data: LogEntry | Frontier}) {
-  constructor(projectUUID: uuid, title: string, append_only_log: AppendOnlyLog) {
-      //The method init needs to be called manually if we enter this method
-       this.append_only_log = append_only_log;
-       this.projectUUID = projectUUID;
-       this.title = title;
-       this.members = new GrowOnlySet<Person>;
-       this.tasks = new GrowOnlySet<Task>; 
+  /**
+   * AOL muss geladen sein bevor er dieser Methode übergeben wird.
+   * @param projectUUID 
+   * @param title 
+   * @param append_only_log 
+   */
+  constructor(projectUUID: uuid, title: string, append_only_log: AppendOnlyLog, projects_path: string) {
+    //The method init needs to be called manually if we enter this method
+    this.append_only_log = append_only_log;
+    this.projectUUID = projectUUID;
+    this.title = title;
+    this.members = new GrowOnlySet<Person>;
+    this.tasks = new GrowOnlySet<Task>;
+    const dir = path.dirname(projects_path) + projectUUID + '/';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(dir + 'project-title.txt', this.title);
   }
 
-  init(creator: uuid, displayNameCreator: string ) {
+  init(creator: uuid, displayNameCreator: string, writeToAOL: boolean) {
     this.creator = creator;
+    if (writeToAOL) {
+      let operation: Operation = {
+        command: "init",
+        args: [creator, displayNameCreator]
+      };
 
-    
-    let operation: Operation = {
-      command: "init",
-      args: [creator, displayNameCreator]
-    };
-
-    let dependencies: uuid[] = [];
-    this.append_only_log.add_operation(creator, operation, dependencies, this.projectUUID);
+      let dependencies: uuid[] = [];
+      this.append_only_log.add_operation(creator, operation, dependencies, this.projectUUID);
+    }
     this.addMember(creator, displayNameCreator, creator, this.append_only_log);
   }
 
+  save(path: string) {
+    this.append_only_log.save();
+  }
 
-
-  load(path: string) {
-    this.append_only_log = new AppendOnlyLog(path);
-    this.append_only_log.load();
-    const ops = this.append_only_log.query_missing_entries_ordered(new Map());
+  charge() { //TODO: Macht das Sinn?
+    const ops = this.append_only_log.query_missing_operations_ordered(new Map());
     this.update(ops);
   }
 
@@ -236,40 +248,40 @@ export class Project {
   index: number;
   dependencies: uuid[];*/
 
-  update(ops: LogEntry[]){
-    for(let i = 0; i < ops.length; i++){
-      let tmp = ops[i];
-      switch (tmp.operation.command) {
+  update(ops: Operation[]) { //TODO: Auf Operation statt LogEntry wechseln
+    for (let i = 0; i < ops.length; i++) {
+      let op = ops[i];
+      switch (op.command) {
         case "init":
-          this.init(tmp.operation.args[0], tmp.operation.args[1]);
+          this.init(op.args[0], op.args[1], false);
           break;
         case "changeName":
-          this.changeName(tmp.operation.args[0], tmp.operation.args[1]);
+          this.changeName(op.args[0], op.args[1]);
           break;
         case "addMember":
-          this.addMember(tmp.operation.args[0], tmp.operation.args[1], tmp.operation.args[2]);
+          this.addMember(op.args[0], op.args[1], op.args[2]);
           break;
         case "createTask":
-          this.createTask(tmp.operation.args[0], tmp.operation.args[1], tmp.operation.args[2], tmp.operation.args[3]);
+          this.createTask(op.args[0], op.args[1], op.args[2], op.args[3]);
           // Noch SetTaskState methode fehlt.
           break;
         case "createTask":
-          this.setTaskStateAOL(tmp.operation.args[0], Number(tmp.operation.args[1]));
+          this.setTaskStateAOL(op.args[0], Number(op.args[1]));
           break;
         case "setTaskStateAOL":
-          this.setTaskStateAOL(tmp.operation.args[0], Number(tmp.operation.args[1]));
+          this.setTaskStateAOL(op.args[0], Number(op.args[1]));
           break;
         case "addTaskAssigneeAOL":
-          this.addTaskAssigneeAOL(tmp.operation.args[0], tmp.operation.args[1], tmp.operation.args[2], Number(tmp.operation.args[3]));
+          this.addTaskAssigneeAOL(op.args[0], op.args[1], op.args[2], Number(op.args[3]));
           break;
 
         case "removeTaskAssigneeAOL":
-          this.removeTaskAssigneeAOL(tmp.operation.args[0], tmp.operation.args[1], tmp.operation.args[2], Number(tmp.operation.args[3]));
+          this.removeTaskAssigneeAOL(op.args[0], op.args[1], op.args[2], Number(op.args[3]));
           break;
-        
+
 
         default:
-          throw(new Error("LogEntry with wrong command: " + tmp.operation.command));
+          throw (new Error("LogEntry with wrong command: " + op.command));
       }
     }
   }
@@ -348,11 +360,11 @@ export class Project {
 
     append_only_log.add_operation(personUUID, operation, dependencies, entryID);   //TODO: Gute EntryID finden, Nur Task als dependency oder gerade alles?
   }
-  addTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid, displayName: string){
+  addTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid, displayName: string) {
     let tasks = this.tasks.get_set();
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-    let person: Person = {displayName: displayName, uuid: personUUID};
+    let person: Person = { displayName: displayName, uuid: personUUID };
     let val = task.assignees.add(person);
     let operation: Operation = {
       command: "addTaskAssigneeAOL",
@@ -363,18 +375,18 @@ export class Project {
 
     this.append_only_log.add_operation(creatorID, operation, dependencies, entryID);
   }
-  addTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, displayName: string, value: number){
+  addTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, displayName: string, value: number) {
     let tasks = this.tasks.get_set();
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-    let person: Person = {displayName: displayName, uuid: personUUID}
+    let person: Person = { displayName: displayName, uuid: personUUID }
     task.assignees.addAOL(person, value);
   }
-  removeTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid, displayName: string){
+  removeTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid, displayName: string) {
     let tasks = this.tasks.get_set();
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-    let person: Person = {displayName: displayName, uuid: personUUID};
+    let person: Person = { displayName: displayName, uuid: personUUID };
     let val = task.assignees.remove(person);
     let operation: Operation = {
       command: "addTaskAssigneeAOL",
@@ -385,13 +397,22 @@ export class Project {
 
     this.append_only_log.add_operation(creatorID, operation, dependencies, entryID);
   }
-  removeTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, displayName: string, value: number){
+  removeTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, displayName: string, value: number) {
     let tasks = this.tasks.get_set();
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-    let person: Person = {displayName: displayName, uuid: personUUID}
+    let person: Person = { displayName: displayName, uuid: personUUID }
     task.assignees.removeAOL(person, value);
   }
+}
+
+export function loadProject(projectUUID: uuid, append_only_log: AppendOnlyLog, projects_path: string): Project {
+  const file = projects_path + projectUUID + '/project-title.txt';
+  if (!fs.existsSync(file)) {
+    throw new Error('could not load project: file doesnt exist');
+  }
+  const title = fs.readFileSync(file).toString('utf-8');
+  return new Project(projectUUID, title, append_only_log, projects_path);
 }
 
 // state: 0 = not started, 1 = in Progress, 2 = done
@@ -418,7 +439,7 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
     this.stateCounter = newState;
     this.state = this.stateCounter % 3; //Die 3 steht für die Anzahl states.
   }
-  changeStateGUI(newState: string){
+  changeStateGUI(newState: string) {
     let newerState = 0;
     switch (newState) {
       case "To Do":
