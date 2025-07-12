@@ -72,9 +72,10 @@ portInput?.addEventListener('keypress', (event) => {
   }
 });
 
+const projectPreviewList = document.getElementById('project-preview-list');
 function updateProjectPreview(projects: ProjectPreview[]) {
-  projectPreviewList.innerHTML = '';
-  for (const p of projects) {
+  projectPreviewList.innerHTML = ''; // clear contents of list
+  for (const p of projects) { // and then fill it back up with content
     // TODO (if there is time) this view is kind of ugly, maybe we can fix that
     const listitem = document.createElement('li');
     const projectButton = document.createElement('button');
@@ -92,8 +93,6 @@ function updateProjectPreview(projects: ProjectPreview[]) {
     projectPreviewList.appendChild(listitem);
   }
 }
-
-const projectPreviewList = document.getElementById('project-preview-list');
 window.electronAPI.on('update-project-preview', (_, projects: ProjectPreview[]) => {updateProjectPreview(projects);})
 
 window.electronAPI.on('update-interface', (_, ip: string, port: number) => {
