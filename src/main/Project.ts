@@ -221,12 +221,12 @@ export class Project {
   init(creator: uuid, displayNameCreator: string, writeToAOL: boolean) {
     this.creator = creator;
     if (writeToAOL) {
-      let operation: Operation = {
+      const operation: Operation = {
         command: "init",
         args: [creator, displayNameCreator]
       };
 
-      let dependencies: uuid[] = [];
+      const dependencies: uuid[] = [];
       this.append_only_log.add_operation(creator, operation, dependencies, this.projectUUID);
       this.addMember(creator, displayNameCreator, creator, true);
     }
@@ -251,7 +251,7 @@ export class Project {
 
   update(ops: Operation[]) { //TODO: Auf Operation statt LogEntry wechseln
     for (let i = 0; i < ops.length; i++) {
-      let op = ops[i];
+      const op = ops[i];
       switch (op.command) {
         case "init":
           this.init(op.args[0], op.args[1], false);
@@ -295,108 +295,108 @@ export class Project {
     if (!writeToAOL) {
       return;
     }
-    let operation: Operation = {
+    const operation: Operation = {
       command: "changeName",
       args: [personUuid, newName]
     };
-    let entryID = uuidv4();
+    const entryID = uuidv4();
 
-    let dependencies: uuid[] = [personUuid]; //Welches nehmen? oder beide?
+    const dependencies: uuid[] = [personUuid]; //Welches nehmen? oder beide?
     this.append_only_log.add_operation(personUuid, operation, dependencies, entryID); //Welche entryID? Ist es Oke newName auch mitzugeben, seitdem auch
   }
 
   createTask(taskUUID: uuid, personUUID: uuid, title: string, description: string, writeToAOL: boolean): Task { //TODO: Description wahscheinlich wegnehmen.
 
-    let taskState: number = 0;
-    let task = new Task(taskUUID, taskState, title, description, personUUID);
+    const taskState = 0;
+    const task = new Task(taskUUID, taskState, title, description, personUUID);
     this.tasks.add(task);
 
     if (!writeToAOL) {
       return task;
     }
-    let operation: Operation = {
+    const operation: Operation = {
       command: "createTask",
       args: [taskUUID, personUUID, title, description],
     };
-    let dependencies: uuid[] = [this.projectUUID];
+    const dependencies: uuid[] = [this.projectUUID];
     this.append_only_log!.add_operation(personUUID, operation, dependencies, taskUUID)
     return task;
   }
 
   addMember(creatorId: uuid, displayName: string, personUUID: uuid, writeToAOL: boolean): void { //TODO: Add Event notification for the GUI to tell it that there has been a member added.
-    let newMember: Person = { displayName: displayName, uuid: personUUID };
+    const newMember: Person = { displayName: displayName, uuid: personUUID };
     this.members.add(newMember);
 
     if (!writeToAOL) {
       return;
     }
-    let operation: Operation = { command: "addMember", args: [creatorId, displayName, personUUID] }; //TODO: Lösung finden, um Person zu übergeben.
-    let dependencies: uuid[] = [this.projectUUID];
+    const operation: Operation = { command: "addMember", args: [creatorId, displayName, personUUID] }; //TODO: Lösung finden, um Person zu übergeben.
+    const dependencies: uuid[] = [this.projectUUID];
     this.append_only_log.add_operation(creatorId, operation, dependencies, personUUID);
   }
 
   setTaskStateAOL(taskUUID: uuid, newTaskState: number): void {//ohne AppendOnly Log!
-    let tasks = this.tasks.get_set();
-    let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
+    const tasks = this.tasks.get_set();
+    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
     task.changeState(newTaskState);
   }
 
   setTaskStateGUI(personUUID: uuid, taskUUID: uuid, newTaskState: string): void {
     // 1) Pull out the live set of tasks
-    let tasks = this.tasks.get_set();
-    let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
+    const tasks = this.tasks.get_set();
+    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
     task.changeStateGUI(newTaskState);
 
-    let operation: Operation = {
+    const operation: Operation = {
       command: "setTaskStateAOL",
       args: [taskUUID, task.get_State_Counter().toString()] //Anpassen!!!
     };
-    let dependencies: uuid[] = [taskUUID];
-    let entryID = uuidv4();
+    const dependencies: uuid[] = [taskUUID];
+    const entryID = uuidv4();
 
     this.append_only_log.add_operation(personUUID, operation, dependencies, entryID);   //TODO: Gute EntryID finden, Nur Task als dependency oder gerade alles?
   }
   addTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid) {
-    let tasks = this.tasks.get_set();
-    let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
+    const tasks = this.tasks.get_set();
+    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-    let val = task.assignees.add(personUUID);
+    const val = task.assignees.add(personUUID);
     console.log(val);
-    let operation: Operation = {
+    const operation: Operation = {
       command: "addTaskAssigneeAOL",
       args: [taskUUID, personUUID, val.toString()] //Anpassen!!!
     };
-    let dependencies: uuid[] = [taskUUID];
-    let entryID = uuidv4();
+    const dependencies: uuid[] = [taskUUID];
+    const entryID = uuidv4();
 
     this.append_only_log.add_operation(creatorID, operation, dependencies, entryID);
   }
   addTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, value: number) {
-    let tasks = this.tasks.get_set();
-    let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
+    const tasks = this.tasks.get_set();
+    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
     task.assignees.addAOL(personUUID, value);
   }
   removeTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid) {
-    let tasks = this.tasks.get_set();
-    let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
+    const tasks = this.tasks.get_set();
+    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-    let val = task.assignees.remove(personUUID);
+    const val = task.assignees.remove(personUUID);
     console.log(val);
-    let operation: Operation = {
+    const operation: Operation = {
       command: "removeTaskAssigneeAOL",
       args: [taskUUID, personUUID, val.toString()] 
     };
-    let dependencies: uuid[] = [taskUUID];
-    let entryID = uuidv4();
+    const dependencies: uuid[] = [taskUUID];
+    const entryID = uuidv4();
 
     this.append_only_log.add_operation(creatorID, operation, dependencies, entryID);
   }
   removeTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, value: number) {
-    let tasks = this.tasks.get_set();
-    let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
+    const tasks = this.tasks.get_set();
+    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
     task.assignees.removeAOL(personUUID, value);
   }
@@ -418,7 +418,7 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
   title: string;
   description: string;
   creator: uuid;
-  stateCounter: number = 0;
+  stateCounter = 0;
   assignees: CausalSet<uuid>;
   constructor(taskUUID: uuid, state: number, title: string, description: string, creator: uuid) {
     this.taskUUID = taskUUID;
