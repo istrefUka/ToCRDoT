@@ -74,6 +74,10 @@ describe("Project Tests", () => {
   });*/
 
   it("test charge", () => {
+    //changename
+    //setTaskStateGUI
+    //addTaskAssigneeGUI
+    //removeTaskAssigneeGUI
     let projectUUID = uuidv4();
     let personUUID = uuidv4();
     let members = new GrowOnlySet<Person>();
@@ -87,10 +91,15 @@ describe("Project Tests", () => {
     project.init(personUUID, displayName, true);
     project.addMember(personUUID, displayName, personNew, true);
     project.createTask(taskUUID, personUUID, title, title, true);
+    project.changeName(personUUID, "Pascal", true);
+    project.setTaskStateGUI(personUUID, taskUUID, "in Progress");
+    project.addTaskAssigneeGUI(personUUID,taskUUID, personNew);
+    project.removeTaskAssigneeGUI(personUUID,taskUUID, personNew);
     let project1 = new Project(projectUUID, title, append_only_log, path);
     project1.charge();
-    console.log(project.members);
-    console.log(project1.members);
+    let person: Person = {displayName: displayName, uuid: personNew};
+    let person1: Person = {displayName: displayName, uuid: personNew};
+    expect(person).toEqual(person1);
     expect(project1.members).toEqual(project.members);
     expect(project1.tasks).toEqual(project.tasks);
   });

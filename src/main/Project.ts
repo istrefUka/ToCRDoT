@@ -18,7 +18,7 @@ export class CausalSet<T> {
       return val;
     }
     this.s.set(x, val + 1);
-    return val;
+    return val+1;
   }
 
   addAOL(x: T, value: number): void {
@@ -43,7 +43,7 @@ export class CausalSet<T> {
       return val;
     }
     this.s.set(x, val + 1);
-    return val;
+    return val+1;
   }
 
   removeAOL(x: T, value: number): void {
@@ -56,7 +56,7 @@ export class CausalSet<T> {
     if (val >= value) {
       return;
     }
-
+    console.log("remove AOL" + value);
     this.s.set(x, value);
     return;
   }
@@ -228,11 +228,11 @@ export class Project {
 
       let dependencies: uuid[] = [];
       this.append_only_log.add_operation(creator, operation, dependencies, this.projectUUID);
+      this.addMember(creator, displayNameCreator, creator, true);
     }
-    this.addMember(creator, displayNameCreator, creator, false);
   }
 
-  save(path: string) {
+  save() {
     this.append_only_log.save();
   }
 
@@ -270,11 +270,11 @@ export class Project {
           this.setTaskStateAOL(op.args[0], Number(op.args[1]));
           break;
         case "addTaskAssigneeAOL":
-          this.addTaskAssigneeAOL(op.args[0], op.args[1], op.args[2], Number(op.args[3]));
+          this.addTaskAssigneeAOL(op.args[0], op.args[1], Number(op.args[2]));
           break;
 
         case "removeTaskAssigneeAOL":
-          this.removeTaskAssigneeAOL(op.args[0], op.args[1], op.args[2], Number(op.args[3]));
+          this.removeTaskAssigneeAOL(op.args[0], op.args[1], Number(op.args[2]));
           break;
 
 
@@ -342,7 +342,7 @@ export class Project {
     task.changeState(newTaskState);
   }
 
-  setTaskStateGUI(personUUID: uuid, projectUUID: uuid, taskUUID: uuid, newTaskState: string): void {
+  setTaskStateGUI(personUUID: uuid, taskUUID: uuid, newTaskState: string): void {
     // 1) Pull out the live set of tasks
     let tasks = this.tasks.get_set();
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
@@ -358,49 +358,47 @@ export class Project {
 
     this.append_only_log.add_operation(personUUID, operation, dependencies, entryID);   //TODO: Gute EntryID finden, Nur Task als dependency oder gerade alles?
   }
-  addTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid, displayName: string) {
+  addTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid) {
     let tasks = this.tasks.get_set();
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-    let person: Person = { displayName: displayName, uuid: personUUID };
-    let val = task.assignees.add(person);
+    let val = task.assignees.add(personUUID);
+    console.log(val);
     let operation: Operation = {
       command: "addTaskAssigneeAOL",
-      args: [taskUUID, personUUID, displayName, val.toString()] //Anpassen!!!
+      args: [taskUUID, personUUID, val.toString()] //Anpassen!!!
     };
     let dependencies: uuid[] = [taskUUID];
     let entryID = uuidv4();
 
     this.append_only_log.add_operation(creatorID, operation, dependencies, entryID);
   }
-  addTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, displayName: string, value: number) {
+  addTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, value: number) {
     let tasks = this.tasks.get_set();
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-    let person: Person = { displayName: displayName, uuid: personUUID }
-    task.assignees.addAOL(person, value);
+    task.assignees.addAOL(personUUID, value);
   }
-  removeTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid, displayName: string) {
+  removeTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid) {
     let tasks = this.tasks.get_set();
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-    let person: Person = { displayName: displayName, uuid: personUUID };
-    let val = task.assignees.remove(person);
+    let val = task.assignees.remove(personUUID);
+    console.log(val);
     let operation: Operation = {
       command: "removeTaskAssigneeAOL",
-      args: [taskUUID, personUUID, displayName, val.toString()] //Anpassen!!!
+      args: [taskUUID, personUUID, val.toString()] 
     };
     let dependencies: uuid[] = [taskUUID];
     let entryID = uuidv4();
 
     this.append_only_log.add_operation(creatorID, operation, dependencies, entryID);
   }
-  removeTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, displayName: string, value: number) {
+  removeTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, value: number) {
     let tasks = this.tasks.get_set();
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-    let person: Person = { displayName: displayName, uuid: personUUID }
-    task.assignees.removeAOL(person, value);
+    task.assignees.removeAOL(personUUID, value);
   }
 }
 
@@ -421,12 +419,12 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
   description: string;
   creator: uuid;
   stateCounter: number = 0;
-  assignees: CausalSet<Person>;
+  assignees: CausalSet<uuid>;
   constructor(taskUUID: uuid, state: number, title: string, description: string, creator: uuid) {
     this.taskUUID = taskUUID;
     this.state = state;
     this.title = title;
-    this.assignees = new CausalSet<Person>();
+    this.assignees = new CausalSet<uuid>();
     this.description = description;
     this.creator = creator;
   }
@@ -437,6 +435,7 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
     this.stateCounter = newState;
     this.state = this.stateCounter % 3; //Die 3 steht für die Anzahl states.
   }
+
   changeStateGUI(newState: string) {
     let newerState = 0;
     switch (newState) {
@@ -452,7 +451,7 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
       default:
         break;
     }
-    this.stateCounter = newerState + this.stateCounter;
+    this.stateCounter = newerState-this.state + this.stateCounter + 3;
     this.state = newerState;
   }
   get_State_Counter(): number {
