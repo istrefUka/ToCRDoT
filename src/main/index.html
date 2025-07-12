@@ -3,24 +3,37 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Electron Scene Switch</title>
+  <title>ToCRDoT</title>
 
 </head>
 
 <body>
-  <div id="scene-login" class="scene">
+  <div id="main-scene-login" class="scene scene-login" , style="display:none;">
     <h1>Login</h1>
     <p>this is a login page</p>
-    <input value="" placeholder="Username" type="text" minlength="5" maxlength="20" id="login-input">
-    <button id="login-btn">login</button>
+    <input value="" placeholder="Username" type="text" id="login-input">
   </div>
-  <div id="scene-home" class="scene" style="display:none;">
+  <!--interface element (should always be seen except for the login screen)-->
+  <div id="interface" class="scene scene-project scene-home">
+    <label>Interface
+      <input id="ip-input" placeholder="Broadcast IP-Address">:<input id="port-input" placeholder="Port">
+    </label>
+  </div>
+  <div id="main-scene-home" class="scene scene-home">
     <h1>Projects</h1>
-    <p>These are the projects you have: </p>
-    <p text="hello"></p>
-    <ul id="project-preview-list"></ul>
+    <div style="width:100%;">
+      <div style="float:left; width:60%;">
+        <p>These are the projects you have locally: </p>
+        <ul id="project-preview-list"></ul>
+      </div>
+      <div id="project-notification-div" style="float:right; width:39%; border:1px solid red; display:none;">
+        <p id="project-notification-text"></p>
+        <button id="project-notification-add-btn">add</button>
+        <button id="project-notification-ignore-btn">ignore</button>
+      </div>
+    </div>
   </div>
-  <div id="scene-project" class="scene" style="display:none;">
+  <div id="main-scene-project" class="scene scene-project" style="display:none;">
     <!-- TODO -->
   </div>
 
