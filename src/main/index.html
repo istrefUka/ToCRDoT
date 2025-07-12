@@ -35,8 +35,14 @@
     <label>Add Project: <input id="new-project-input" placeholder="Project Title" value=""></label>
   </div>
   <div id="main-scene-project" class="scene scene-project" style="display:none;">
-    <h1>Project-View</h1>
-    <!-- TODO -->
+    <button id="leave-project-btn">Leave Project</button>
+    <!-- TODO diese view sollte dynamisch sein (siehe updateProjectPreview und showNotification für Inspiration)-->
+    <h1>Project-View</h1> <!-- Dieser Titel sollte mit dem Projekt-Name ersetzt werden -->
+    <select id="task-state-selection"> <!-- Das ist ein Beispielhaftes Dropdown mit events in renderer.ts -->
+      <option value="todo">To Do</option>
+      <option value="inprogress">In Progress</option>
+      <option value="done">Done</option>
+    </select>
   </div>
 
 </body>

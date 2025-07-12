@@ -137,4 +137,21 @@ window.electronAPI.on('new-project-in-network', (_, preview: ProjectPreview, rin
   showNotification(preview, rinfo);
 })
 
-console.log('👋 This message is being logged by "renderer.js", included via webpack');
+// Beispiel 1: renderer.ts -> index.ts:
+const leaveProjectButton = document.getElementById('leave-project-btn');
+leaveProjectButton.addEventListener('click', () => {
+  window.electronAPI.send('leave-project');
+})
+
+// Beispiel 2:
+const taskStateDropDown = document.getElementById('task-state-selection');
+taskStateDropDown.addEventListener('change', () => {
+  window.electronAPI.send('change-project-task-state', "<task-uuid>", taskStateDropDown.value);
+})
+
+// Beispiel 3:
+/*window.electronAPI.on('update-project-view', project: ProjectView) {
+  console.log("rendering view", project);
+  // TODO
+}*/
+

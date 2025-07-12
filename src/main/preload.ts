@@ -5,13 +5,13 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  send: (channel: string, data?: unknown) => {
-    ipcRenderer.send(channel, data);
-    console.log('renderer sent on channel', channel, ':', data);
+  send: (channel: string, ...data: unknown[]) => {
+    ipcRenderer.send(channel, ...data);
+    console.log('renderer sent', data, "on channel '" + channel + "'");
   },
   on: (channel: string, listener: (event: IpcRendererEvent, ...args: unknown[]) => void) => {
     ipcRenderer.on(channel, (event: IpcRendererEvent, ...args: unknown[]) => {
-      console.log('renderer received on channel', channel, ':', args);
+      console.log('renderer received', args, "on channel '" + channel + "'");
       listener(event, ...args);
     });
   }
