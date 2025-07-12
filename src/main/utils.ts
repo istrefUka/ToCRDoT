@@ -11,8 +11,8 @@ export function fromBase64(input: string): string {
 // the following functions shall be used to serialize / deserialize the append-only log
 // source: https://stackoverflow.com/a/56150320/13166601
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapReplacer(key: any, value: any) { 
-  if(value instanceof Map) {
+export function mapReplacer(key: any, value: any) {
+  if (value instanceof Map) {
     return {
       dataType: 'Map',
       value: Array.from(value.entries()), // or with spread: value: [...value]
@@ -23,7 +23,7 @@ export function mapReplacer(key: any, value: any) {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapReviver(key: any, value: any) {
-  if(typeof value === 'object' && value !== null) {
+  if (typeof value === 'object' && value !== null) {
     if (value.dataType === 'Map') {
       return new Map(value.value);
     }
