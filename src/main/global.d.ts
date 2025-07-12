@@ -12,11 +12,15 @@ declare global {
   interface HTMLElement {
     value: string;
   }
+  type MessageInfo = {
+    address: string,
+    family: string,
+    port: number,
+    size: number,
+  };
   interface Window {
     electronAPI: {
       send: (channel: string, data?) => void;
-      switchScene: (scene: Scene) => void;
-
       on: (channel: string, listener: (event: IpcRendererEvent, ...args) => void) => void;
     }
   }

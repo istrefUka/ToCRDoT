@@ -4,6 +4,9 @@ import { AppendOnlyLog, Frontier, LogEntry, Operation, uuid } from './append_onl
 import os from 'os';
 import { toBase64, fromBase64, mapReplacer, isLogEntry, isFrontier } from './utils'
 
+/**
+ * TODO (if there is time) implement callback to notify user when the ip and the port were successfully set in the actual socket with the actual ip and port of the socket. 
+ */
 class BaseCommunication {
   public broadcast_ip: string;
   public socket: Socket;
@@ -58,7 +61,9 @@ class BaseCommunication {
     if (this.onMessageCallback != null) {
       this.socket.off('message', this.onMessageCallback);
     }
-    this.socket.on('message', onMessageCallback);
+    this.socket.on('message', (msg, rinfo) => {
+      onMessageCallback(msg.toString(), rinfo);
+    });
     this.onMessageCallback = onMessageCallback;
   }
 
@@ -67,26 +72,16 @@ class BaseCommunication {
   }
 
   setPort(port: number): Promise<void> {
-    return new Promise<void>(
-      (resolve) => {
-        const r = async () => {
-          await closeSocket(this.socket);
-          this.socket = dgram.createSocket('udp4');
-          this.initSocket();
-          if (this.onMessageCallback != null) {
-            this.onMessage(this.onMessageCallback);
-          }
-          await bindSocket(this.socket, port);
-          this._port = port;
-          resolve();
-        }
-        if (this.socket) {
-          closeSocket(this.socket).then(r)
-        } else {
-          r();
-        }
+    return (async () => {
+      await closeSocket(this.socket);
+      this.socket = dgram.createSocket('udp4');
+      this.initSocket();
+      if (this.onMessageCallback != null) {
+        this.onMessage(this.onMessageCallback);
       }
-    )
+      await bindSocket(this.socket, port);
+      this._port = port;
+    })();
   }
 }
 
@@ -132,7 +127,7 @@ export class ProjectCommunication {
   }
 
   init(): Promise<void> {
-    return new Promise(async (resolve) => {
+    return (async () => {
       await this.communication.init();
       this.communication.onMessage((msg, rinfo) => {
         const decoded_msg = decodeMessage(msg);
@@ -145,8 +140,7 @@ export class ProjectCommunication {
         this.handleMessage(decoded_msg);
         this.crdt_update_callback(this.appendOnlyLog.query_missing_operations_ordered(o))
       })
-      resolve();
-    });
+    })();
   }
 
   handleMessage(msg: { projectID: uuid, projectName: string, data: LogEntry | Frontier }) {
@@ -210,11 +204,8 @@ export class ProjectCommunication {
    * This method sends the frontier repeatedly with the delay specified in this.delay_ms.
    */
   async messageLoop() {
-    let msgIndex = 0;
-
-    while (true) {
+    for (;;) {
       this.sendMessage(this.appendOnlyLog.get_frontier());
-      msgIndex++;
       await sleep(this.delay_ms);
     }
   }
@@ -240,9 +231,17 @@ export class ProjectListener {
    * Initialize the listening with a callback. 
    * @param onMessageCallback This is the callback for when a message arrives. NOTE: should be used for creating a popup 
    */
-  init(onMessageCallback: (msg: string, rinfo: MessageInfo) => void) {
+  init(onMessageCallback: (preview: ProjectPreview, rinfo: MessageInfo) => void) {
+    const messageCallback = (msg: string, rinfo: MessageInfo): void => {
+      const dec_msg = decodeMessage(msg);
+      const projPreview = {
+        projectID: dec_msg.projectID,
+        projectTitle: dec_msg.projectName,
+      };
+      onMessageCallback(projPreview, rinfo);
+    }
     this.communication.init();
-    this.communication.onMessage(onMessageCallback);
+    this.communication.onMessage(messageCallback);
   }
 
   get port() {
@@ -266,12 +265,6 @@ export class ProjectListener {
   }
 }
 
-type MessageInfo = {
-  address: string,
-  family: string,
-  port: number,
-  size: number,
-};
 
 /**
  * This function encodes a command into a string. This works by first converting 

@@ -34,29 +34,43 @@ function switchScene(id: Scene) {
     (scene as HTMLElement).style.display = "none";
   })
 
-  const showScene = document.getElementById(id);
-  if (showScene) {
-    showScene.style.display = "block";
-  }
+  const showScenes = document.querySelectorAll("." + id);
+  showScenes.forEach(scene => {
+    (scene as HTMLElement).style.display = "block";
+  });
 
   // toggle some buttons maybe..
 }
 
-const btn = document.getElementById('login-btn');
 const loginInput = document.getElementById('login-input');
-btn?.addEventListener('click', () => {
-  const username = loginInput.value;
-  if (username.length < 4 || username.length > 20) {
-    // TODO impement a label in html to show this message
-    console.log('username must be between 4 and 20 characters long');
-    return;
+loginInput?.addEventListener('keypress', (event) => {
+  if (event.key === "Enter") {
+    const username = loginInput.value;
+    if (username.length < 4 || username.length > 20) {
+      // TODO implement a label in html to show this message
+      console.log('username must be between 4 and 20 characters long');
+      return;
+    }
+    window.electronAPI.send('login-submit', username);
   }
-  window.electronAPI.send('login-submit', username);
-})
+});
 
 window.electronAPI.on('switch-scene', (_, scene: Scene) => {
   switchScene(scene);
-})
+});
+
+const ipInput = document.getElementById('ip-input');
+const portInput = document.getElementById('port-input');
+ipInput.addEventListener('keypress', (event) => {
+  if (event.key === "Enter") {
+    window.electronAPI.send('change-ip-address', ipInput.value);
+  }
+});
+portInput?.addEventListener('keypress', (event) => {
+  if (event.key === "Enter") {
+    window.electronAPI.send('change-port', Number(portInput.value));
+  }
+});
 
 const projectPreviewList = document.getElementById('project-preview-list');
 window.electronAPI.on('update-project-preview', (_, projects: ProjectPreview[]) => {
@@ -67,6 +81,34 @@ window.electronAPI.on('update-project-preview', (_, projects: ProjectPreview[]) 
     listitem.innerHTML = p.projectTitle;
     projectPreviewList.appendChild(listitem);
   }
+})
+
+window.electronAPI.on('update-interface', (_, ip: string, port: number) => {
+  ipInput.value = ip;
+  portInput.value = port.toString();
+})
+
+const projectNotification = document.getElementById('project-notification-div');
+const notificationText = document.getElementById('project-notification-text')
+const addButton = document.getElementById('project-notification-add-btn');
+const ignoreButton = document.getElementById('project-notification-ignore-btn');
+function showNotification(projectPreview: ProjectPreview, rinfo: MessageInfo) {
+  projectNotification.style.display = "block";
+  notificationText.innerHTML = 'Project <b>' + projectPreview.projectTitle + '</b> is in network (id: ' +projectPreview.projectID + ')'
+  addButton.addEventListener('click', () => {
+    window.electronAPI.send('add-project', projectPreview.projectID);
+    projectNotification.style.display = "none";
+  })
+  ignoreButton.addEventListener('click', () => {
+    window.electronAPI.send('ignore-project', projectPreview.projectID);
+    projectNotification.style.display = "none";
+  })
+  projectNotification.appendChild(addButton);
+  projectNotification.appendChild(ignoreButton);
+}
+
+window.electronAPI.on('new-project-in-network', (_, preview: ProjectPreview, rinfo: MessageInfo) => {
+  showNotification(preview, rinfo);
 })
 
 console.log('👋 This message is being logged by "renderer.js", included via webpack');
