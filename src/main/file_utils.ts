@@ -1,7 +1,10 @@
 import * as fs from 'fs'
 import { toBase64 } from './utils';
 import path from 'path';
+<<<<<<< HEAD
 import { uuid } from './append_only_log';
+=======
+>>>>>>> 64ef989100e5e83f0212cabf28845d47bfc957d7
 
 /**
  * throws an error if the user hasn't logged in yet
@@ -59,7 +62,6 @@ export function loadProjectPreview(projects_path: string, projectID: uuid): Proj
   const projectTitle = fs.readFileSync(path.join(projects_path, projectID, 'project-title.txt')).toString();
   return {projectID, projectTitle};
 }
-
 
 export function storeNewEmptyProject(projects_path: string, project: ProjectPreview) {
   const newfolder = path.join(projects_path, project.projectID);

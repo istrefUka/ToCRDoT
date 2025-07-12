@@ -136,6 +136,7 @@ window.electronAPI.on('new-project-in-network', (_, preview: ProjectPreview, rin
   showNotification(preview, rinfo);
 })
 
+<<<<<<< HEAD
 // Beispiel 1: renderer.ts -> index.ts:
 const leaveProjectButton = document.getElementById('leave-project-btn');
 leaveProjectButton.addEventListener('click', () => {
@@ -154,3 +155,6 @@ taskStateDropDown.addEventListener('change', () => {
   // TODO
 }*/
 
+=======
+console.log('👋 This message is being logged by "renderer.js", included via webpack');
+>>>>>>> 64ef989100e5e83f0212cabf28845d47bfc957d7
