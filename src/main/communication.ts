@@ -149,7 +149,7 @@ export class ProjectCommunication {
     });
   }
 
-  handleMessage(msg: {projectID: uuid, projectName: string, data: LogEntry | Frontier}) {
+  handleMessage(msg: { projectID: uuid, projectName: string, data: LogEntry | Frontier }) {
     if (isLogEntry(msg.data)) {
       this.appendOnlyLog.update([msg.data]);
       this.appendOnlyLog.save();
@@ -324,14 +324,14 @@ export function decodeMessage(encMessage: string): { projectID: uuid, projectNam
   const datatype = words.shift();
   const data_enc = words.join(' ');
   switch (datatype) {
-  case 'e':
-    data = _decodeEntry(data_enc)
-    break;
-  case 'f':
-    data = _decodeFrontier(data_enc);
-    break;
-  default:
-    throw new Error("invalid datatype: '" + datatype + "', only 'e' (LogEntry) or 'f' (Frontier) allowed");
+    case 'e':
+      data = _decodeEntry(data_enc)
+      break;
+    case 'f':
+      data = _decodeFrontier(data_enc);
+      break;
+    default:
+      throw new Error("invalid datatype: '" + datatype + "', only 'e' (LogEntry) or 'f' (Frontier) allowed");
   }
   return {
     projectID,
