@@ -11,12 +11,14 @@
   <div id="scene-login" class="scene">
     <h1>Login</h1>
     <p>this is a login page</p>
-    <input value="username">
+    <input value="" placeholder="Username" type="text" minlength="5" maxlength="20" id="login-input">
     <button id="login-btn">login</button>
   </div>
   <div id="scene-home" class="scene" style="display:none;">
-    <h1>Hello World!</h1>
-    <p>Welcome to your Electron application.</p>
+    <h1>Projects</h1>
+    <p>These are the projects you have: </p>
+    <p text="hello"></p>
+    <ul id="project-preview-list"></ul>
   </div>
   <div id="scene-project" class="scene" style="display:none;">
     <!-- TODO -->
