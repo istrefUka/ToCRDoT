@@ -4,23 +4,8 @@ import * as fs from "fs"
 import {Task, Project, GrowOnlySet, CausalSet } from "../main/Project"
 
 describe("Project Tests", () => {
-  /*it("test createProject", () => {
-    //createProject(projectUUID: uuid, personUUID: uuid, title: string, append_only_log: AppendOnlyLog)
-    let projectUUID = uuidv4();
-    let personUUID = uuidv4();
-    let title = "Project 1"
-    let displayName = "Istref";
-    let members = new CausalSet<Person>();
-    let tasks   = new GrowOnlySet<Task>();
-    let newMember2: Person = {displayName: displayName, uuid: personUUID};
-    members.add(newMember2);
-    let project1 = crdt.createProject(projectUUID, personUUID, displayName, title);
-    let project2 = new Project(projectUUID, personUUID, members, tasks, title);
-    expect(project1).toEqual(project2);
-    //expect(log._search_entries(entry1)).toEqual(expected_search_res);
-  });*/
 
-  it("test addMember", () => {
+  /*it("test addMember", () => {
     let projectUUID = uuidv4();
     let personUUID = uuidv4();
     let members = new GrowOnlySet<Person>();
@@ -86,9 +71,27 @@ describe("Project Tests", () => {
     project.setTaskState(personUUID,projectUUID,taskUUID,newTaskState);
     expect(task2.state).toEqual(2);
     expect(task2.stateCounter).toEqual(5);
-  });
+  });*/
 
-  
+  it("test charge", () => {
+    let projectUUID = uuidv4();
+    let personUUID = uuidv4();
+    let members = new GrowOnlySet<Person>();
+    let displayName = "Istref";
+    let title = "Project 1"
+    let taskUUID = uuidv4();
+    let path = "/Users/istrefuka/Desktop/4.Semester/Distributed programming and Internet/ToCRDoT/src/main";
+    let append_only_log = new AppendOnlyLog(path);
+    let personNew = uuidv4();
+    let project = new Project(projectUUID, title, append_only_log, path);
+    project.init(personUUID, displayName, true);
+    project.addMember(personUUID, displayName, personNew, append_only_log);
+    project.createTask(taskUUID, personUUID, title, title, append_only_log);
+    let project1 = new Project(projectUUID, title, append_only_log, path);
+    project1.charge();
+    expect(project1.members).toEqual(project.members);
+    expect(project1.tasks).toEqual(project.tasks);
+  });
   
 
 

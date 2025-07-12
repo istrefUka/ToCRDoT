@@ -209,8 +209,8 @@ export class Project {
     this.append_only_log = append_only_log;
     this.projectUUID = projectUUID;
     this.title = title;
-    this.members = new GrowOnlySet<Person>;
-    this.tasks = new GrowOnlySet<Task>;
+    this.members = new GrowOnlySet<Person>();
+    this.tasks = new GrowOnlySet<Task>();
     const dir = path.dirname(projects_path) + projectUUID + '/';
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -428,7 +428,7 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
     this.taskUUID = taskUUID;
     this.state = state;
     this.title = title;
-    this.assignees = new CausalSet<Person>;
+    this.assignees = new CausalSet<Person>();
     this.description = description;
     this.creator = creator;
   }
