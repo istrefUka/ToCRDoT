@@ -229,7 +229,7 @@ export class Project {
       let dependencies: uuid[] = [];
       this.append_only_log.add_operation(creator, operation, dependencies, this.projectUUID);
     }
-    this.addMember(creator, displayNameCreator, creator, this.append_only_log);
+    this.addMember(creator, displayNameCreator, creator, false);
   }
 
   save(path: string) {
@@ -238,6 +238,7 @@ export class Project {
 
   charge() { 
     const ops = this.append_only_log.query_missing_operations_ordered(new Map());
+    console.log(ops);
     this.update(ops);
   }
 
@@ -256,17 +257,14 @@ export class Project {
           this.init(op.args[0], op.args[1], false);
           break;
         case "changeName":
-          this.changeName(op.args[0], op.args[1]);
+          this.changeName(op.args[0], op.args[1], false);
           break;
         case "addMember":
-          this.addMember(op.args[0], op.args[1], op.args[2]);
+          this.addMember(op.args[0], op.args[1], op.args[2], false);
           break;
         case "createTask":
-          this.createTask(op.args[0], op.args[1], op.args[2], op.args[3]);
+          this.createTask(op.args[0], op.args[1], op.args[2], op.args[3], false);
           // Noch SetTaskState methode fehlt.
-          break;
-        case "createTask":
-          this.setTaskStateAOL(op.args[0], Number(op.args[1]));
           break;
         case "setTaskStateAOL":
           this.setTaskStateAOL(op.args[0], Number(op.args[1]));
@@ -286,7 +284,7 @@ export class Project {
     }
   }
 
-  changeName(personUuid: uuid, newName: string, append_only_log?: AppendOnlyLog): void {
+  changeName(personUuid: uuid, newName: string, writeToAOL: boolean): void {
     const currentMembers = this.members.get_set();
     const oldPerson = [...currentMembers].find(p => p.uuid === personUuid);
     if (!oldPerson) {
@@ -294,7 +292,7 @@ export class Project {
     }
     oldPerson.displayName = newName;
 
-    if (!append_only_log) {
+    if (!writeToAOL) {
       return;
     }
     let operation: Operation = {
@@ -304,37 +302,37 @@ export class Project {
     let entryID = uuidv4();
 
     let dependencies: uuid[] = [personUuid]; //Welches nehmen? oder beide?
-    append_only_log.add_operation(personUuid, operation, dependencies, entryID); //Welche entryID? Ist es Oke newName auch mitzugeben, seitdem auch
+    this.append_only_log.add_operation(personUuid, operation, dependencies, entryID); //Welche entryID? Ist es Oke newName auch mitzugeben, seitdem auch
   }
 
-  createTask(taskUUID: uuid, personUUID: uuid, title: string, description: string, append_only_log?: AppendOnlyLog): Task { //TODO: Description wahscheinlich wegnehmen.
+  createTask(taskUUID: uuid, personUUID: uuid, title: string, description: string, writeToAOL: boolean): Task { //TODO: Description wahscheinlich wegnehmen.
 
     let taskState: number = 0;
     let task = new Task(taskUUID, taskState, title, description, personUUID);
     this.tasks.add(task);
 
-    if (!append_only_log) {
+    if (!writeToAOL) {
       return task;
     }
     let operation: Operation = {
       command: "createTask",
-      args: [personUUID, title, description],
+      args: [taskUUID, personUUID, title, description],
     };
     let dependencies: uuid[] = [this.projectUUID];
-    append_only_log!.add_operation(personUUID, operation, dependencies, taskUUID)
+    this.append_only_log!.add_operation(personUUID, operation, dependencies, taskUUID)
     return task;
   }
 
-  addMember(creatorId: uuid, displayName: string, personUUID: uuid, append_only_log?: AppendOnlyLog): void { //TODO: Add Event notification for the GUI to tell it that there has been a member added.
+  addMember(creatorId: uuid, displayName: string, personUUID: uuid, writeToAOL: boolean): void { //TODO: Add Event notification for the GUI to tell it that there has been a member added.
     let newMember: Person = { displayName: displayName, uuid: personUUID };
     this.members.add(newMember);
 
-    if (!append_only_log) {
+    if (!writeToAOL) {
       return;
     }
     let operation: Operation = { command: "addMember", args: [creatorId, displayName, personUUID] }; //TODO: Lösung finden, um Person zu übergeben.
     let dependencies: uuid[] = [this.projectUUID];
-    append_only_log.add_operation(creatorId, operation, dependencies, personUUID);
+    this.append_only_log.add_operation(creatorId, operation, dependencies, personUUID);
   }
 
   setTaskStateAOL(taskUUID: uuid, newTaskState: number): void {//ohne AppendOnly Log!
@@ -344,7 +342,7 @@ export class Project {
     task.changeState(newTaskState);
   }
 
-  setTaskStateGUI(personUUID: uuid, projectUUID: uuid, taskUUID: uuid, newTaskState: string, append_only_log: AppendOnlyLog): void {
+  setTaskStateGUI(personUUID: uuid, projectUUID: uuid, taskUUID: uuid, newTaskState: string): void {
     // 1) Pull out the live set of tasks
     let tasks = this.tasks.get_set();
     let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
@@ -358,7 +356,7 @@ export class Project {
     let dependencies: uuid[] = [taskUUID];
     let entryID = uuidv4();
 
-    append_only_log.add_operation(personUUID, operation, dependencies, entryID);   //TODO: Gute EntryID finden, Nur Task als dependency oder gerade alles?
+    this.append_only_log.add_operation(personUUID, operation, dependencies, entryID);   //TODO: Gute EntryID finden, Nur Task als dependency oder gerade alles?
   }
   addTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid, displayName: string) {
     let tasks = this.tasks.get_set();
@@ -389,7 +387,7 @@ export class Project {
     let person: Person = { displayName: displayName, uuid: personUUID };
     let val = task.assignees.remove(person);
     let operation: Operation = {
-      command: "addTaskAssigneeAOL",
+      command: "removeTaskAssigneeAOL",
       args: [taskUUID, personUUID, displayName, val.toString()] //Anpassen!!!
     };
     let dependencies: uuid[] = [taskUUID];

@@ -85,10 +85,12 @@ describe("Project Tests", () => {
     let personNew = uuidv4();
     let project = new Project(projectUUID, title, append_only_log, path);
     project.init(personUUID, displayName, true);
-    project.addMember(personUUID, displayName, personNew, append_only_log);
-    project.createTask(taskUUID, personUUID, title, title, append_only_log);
+    project.addMember(personUUID, displayName, personNew, true);
+    project.createTask(taskUUID, personUUID, title, title, true);
     let project1 = new Project(projectUUID, title, append_only_log, path);
     project1.charge();
+    console.log(project.members);
+    console.log(project1.members);
     expect(project1.members).toEqual(project.members);
     expect(project1.tasks).toEqual(project.tasks);
   });
