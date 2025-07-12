@@ -1,10 +1,7 @@
 import * as fs from 'fs'
 import { toBase64 } from './utils';
 import path from 'path';
-<<<<<<< HEAD
 import { uuid } from './append_only_log';
-=======
->>>>>>> 64ef989100e5e83f0212cabf28845d47bfc957d7
 
 /**
  * throws an error if the user hasn't logged in yet
