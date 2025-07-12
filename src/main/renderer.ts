@@ -72,16 +72,29 @@ portInput?.addEventListener('keypress', (event) => {
   }
 });
 
-const projectPreviewList = document.getElementById('project-preview-list');
-window.electronAPI.on('update-project-preview', (_, projects: ProjectPreview[]) => {
-  console.log('update project preview!!');
+function updateProjectPreview(projects: ProjectPreview[]) {
   projectPreviewList.innerHTML = '';
   for (const p of projects) {
+    // TODO (if there is time) this view is kind of ugly, maybe we can fix that
     const listitem = document.createElement('li');
-    listitem.innerHTML = p.projectTitle;
+    const projectButton = document.createElement('button');
+    projectButton.textContent = p.projectTitle;
+    projectButton.style.float = "left";
+    projectButton.addEventListener('click', () => {
+      window.electronAPI.send('open-project', p.projectID);
+    });
+    const projIdDiv = document.createElement('div');
+    projIdDiv.appendChild(projectButton);
+    const text = document.createElement('p');
+    text.textContent = '(ID: ' + p.projectID + ')';
+    projIdDiv.appendChild(text);
+    listitem.appendChild(projIdDiv);
     projectPreviewList.appendChild(listitem);
   }
-})
+}
+
+const projectPreviewList = document.getElementById('project-preview-list');
+window.electronAPI.on('update-project-preview', (_, projects: ProjectPreview[]) => {updateProjectPreview(projects);})
 
 window.electronAPI.on('update-interface', (_, ip: string, port: number) => {
   ipInput.value = ip;
@@ -94,18 +107,31 @@ const addButton = document.getElementById('project-notification-add-btn');
 const ignoreButton = document.getElementById('project-notification-ignore-btn');
 function showNotification(projectPreview: ProjectPreview, rinfo: MessageInfo) {
   projectNotification.style.display = "block";
-  notificationText.innerHTML = 'Project <b>' + projectPreview.projectTitle + '</b> is in network (id: ' +projectPreview.projectID + ')'
+  notificationText.innerHTML = 'Project <b>' + projectPreview.projectTitle + '</b> is in network (ID: ' +projectPreview.projectID + ')'
   addButton.addEventListener('click', () => {
-    window.electronAPI.send('add-project', projectPreview.projectID);
+    window.electronAPI.send('add-project', projectPreview);
     projectNotification.style.display = "none";
   })
   ignoreButton.addEventListener('click', () => {
-    window.electronAPI.send('ignore-project', projectPreview.projectID);
+    window.electronAPI.send('ignore-project', projectPreview);
     projectNotification.style.display = "none";
   })
   projectNotification.appendChild(addButton);
   projectNotification.appendChild(ignoreButton);
 }
+
+const newProjectInput = document.getElementById('new-project-input');
+newProjectInput.addEventListener('keypress', (event) => {
+  if (event.key === "Enter") {
+    const projectTitle = newProjectInput.value;
+    if (projectTitle.length < 4 || projectTitle.length > 20) {
+      // TODO (if there is time) make this 'error' an element of the GUI
+      console.log("project name must be between 4 and 20 characters long");
+      return;
+    }
+    window.electronAPI.send('create-new-project', newProjectInput.value);
+  }
+})
 
 window.electronAPI.on('new-project-in-network', (_, preview: ProjectPreview, rinfo: MessageInfo) => {
   showNotification(preview, rinfo);
