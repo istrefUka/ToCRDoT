@@ -21,6 +21,9 @@ class BaseCommunication {
 
   init(): Promise<void> {
     this.socket = dgram.createSocket('udp4');
+    if(this.onMessageCallback != null) {
+      this.onMessage(this.onMessageCallback);
+    }
     this.initSocket();
 
     return bindSocket(this.socket, this._port);
@@ -262,6 +265,10 @@ export class ProjectListener {
 
   close() {
     this.communication.close();
+  }
+
+  open() {
+    this.communication.init();
   }
 }
 

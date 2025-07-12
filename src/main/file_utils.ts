@@ -50,3 +50,13 @@ export function loadProjectPreviews(projects_path: string): ProjectPreview[] {
   }
   return res;
 }
+
+export function storeNewEmptyProject(projects_path: string, project: ProjectPreview) {
+  const newfolder = path.join(projects_path, project.projectID);
+  if (fs.existsSync(newfolder)) {
+    throw new Error("project with id " + project.projectID + " already exists");
+  }
+  fs.mkdirSync(newfolder, { recursive: true });
+
+  fs.writeFileSync(path.join(newfolder, "project-title.txt"), project.projectTitle);
+}
