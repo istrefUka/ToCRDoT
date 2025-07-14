@@ -26,6 +26,7 @@
  * ```
  */
 
+import { uuid } from './append_only_log';
 import './index.css';
 
 function switchScene(id: Scene) {
@@ -57,6 +58,13 @@ loginInput?.addEventListener('keypress', (event) => {
 
 window.electronAPI.on('switch-scene', (_, scene: Scene) => {
   switchScene(scene);
+});
+
+window.electronAPI.on('set-project-title', (_,projectTitle: string) => {
+  const titleEl = document.getElementById('project-title');
+  if (titleEl) {
+    titleEl.innerText = projectTitle;
+  }
 });
 
 const ipInput = document.getElementById('ip-input');

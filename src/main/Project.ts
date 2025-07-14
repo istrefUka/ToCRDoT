@@ -2,6 +2,7 @@ import path from "path";
 import * as fs from 'node:fs'
 import { uuid, LogEntry, Person, AppendOnlyLog, Operation } from "./append_only_log";
 import { v4 as uuidv4 } from 'uuid';
+import { skip } from "node:test";
 
 export class CausalSet<T> {
   private s: Map<T, number>;
@@ -190,6 +191,17 @@ export class GrowOnlySet<T> {
 //TODO: ADD and REMOVE ASSIGNEE methods
 //TODO: update Methode
 //TODO: boolean statt AOL übergeben
+
+export type TaskView={
+  task:Task,
+  bools: boolean[]
+}
+
+export type ProjectView= TaskView[];
+
+
+
+
 export class Project {
   append_only_log: AppendOnlyLog;
   projectUUID: uuid;
@@ -204,18 +216,13 @@ export class Project {
    * @param title 
    * @param append_only_log 
    */
-  constructor(projectUUID: uuid, title: string, append_only_log: AppendOnlyLog, projects_path: string) {
+  constructor(projectUUID: uuid, title: string, append_only_log: AppendOnlyLog) {
     //The method init needs to be called manually if we enter this method
     this.append_only_log = append_only_log;
     this.projectUUID = projectUUID;
     this.title = title;
     this.members = new GrowOnlySet<Person>();
     this.tasks = new GrowOnlySet<Task>();
-    const dir = path.dirname(projects_path) + projectUUID + '/';
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(dir + 'project-title.txt', this.title);
   }
 
   init(creator: uuid, displayNameCreator: string, writeToAOL: boolean) {
@@ -241,13 +248,6 @@ export class Project {
     console.log(ops);
     this.update(ops);
   }
-
-  /*export class LogEntry {
-  creator: uuid;
-  id: uuid;
-  operation: Operation;
-  index: number;
-  dependencies: uuid[];*/
 
   update(ops: Operation[]) { //TODO: Auf Operation statt LogEntry wechseln
     for (let i = 0; i < ops.length; i++) {
@@ -366,7 +366,7 @@ export class Project {
     console.log(val);
     const operation: Operation = {
       command: "addTaskAssigneeAOL",
-      args: [taskUUID, personUUID, val.toString()] //Anpassen!!!
+      args: [taskUUID, personUUID, val.toString()] 
     };
     const dependencies: uuid[] = [taskUUID];
     const entryID = uuidv4();
@@ -400,6 +400,22 @@ export class Project {
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
     task.assignees.removeAOL(personUUID, value);
   }
+
+  getOrderedMembers(): Person[] {
+  const arr = Array.from(this.members.get_set());
+  arr.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  return arr;
+}
+  getProjectView(): ProjectView{ //TODO
+    let output: TaskView[] = [];
+    let persons = this.getOrderedMembers();
+    for(const task of this.tasks.get_set()){
+       output.push(task.getTaskView(persons));
+    }
+    return output;
+  }
+
+
 }
 
 export function loadProject(projectUUID: uuid, append_only_log: AppendOnlyLog, projects_path: string): Project {
@@ -408,7 +424,7 @@ export function loadProject(projectUUID: uuid, append_only_log: AppendOnlyLog, p
     throw new Error('could not load project: file doesnt exist');
   }
   const title = fs.readFileSync(file).toString('utf-8');
-  return new Project(projectUUID, title, append_only_log, projects_path);
+  return new Project(projectUUID, title, append_only_log);
 }
 
 // state: 0 = not started, 1 = in Progress, 2 = done
@@ -454,6 +470,14 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
     this.stateCounter = newerState-this.state + this.stateCounter + 3;
     this.state = newerState;
   }
+  getTaskView(persons: Person[]): TaskView{ //TODO
+    let bools: boolean[] = [];
+    for(let i = 0; i < persons.length; i++){
+      let isAssigned = this.assignees.get_set().has(persons[i].uuid);
+      bools.push(isAssigned);
+    }
+    return {task: this, bools: bools};
+  }
   get_State_Counter(): number {
     return this.stateCounter;
   }
@@ -461,129 +485,3 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
     return this.state;
   }
 }
-
-
-
-/*export class CRDT { //TODO: remove operation
-  projects = new Map<uuid, Project>();
-
-  /*createProject(projectUUID: uuid, personUUID: uuid, displayName: string, title: string, append_only_log?: AppendOnlyLog): Project {
-    let members = new CausalSet<Person>();
-    let tasks = new GrowOnlySet<Task>();
-    let project = new Project(projectUUID, personUUID, members, tasks, title);
-    this.projects.set(project.projectUUID, project);
-    let newMember: Person = { displayName: displayName, uuid: personUUID, };
-    this.addMember(personUUID, projectUUID, displayName, personUUID, append_only_log); //ACHTUNG CreatorID und personUUID sind Gleich, mögliche Probleme?
-    let operation: Operation = { command: "createProject", args: [projectUUID, personUUID, title] };
-    let dependencies: uuid[] = [];
-    if (!append_only_log) {
-      return project;
-    }
-    append_only_log!.add_operation(personUUID, operation, dependencies, projectUUID);
-    return project;
-  }*/
-
-/*getProjects(): Map<uuid, Project> {
-  return this.projects;
-}*/
-
-
-
-/*addMember(creatorId: uuid, projectId: uuid, displayName: string, personUUID: uuid, append_only_log?: AppendOnlyLog): void { //TODO: Add Event notification for the GUI to tell it that there has been a member added.
-  let project = this.projects.get(projectId);
-  if (!project) throw new Error(`Projekt ${projectId} nicht gefunden`);
-  let newMember: Person = { displayName: displayName, uuid: personUUID, };
-  project.members.add(newMember);
-  let operation: Operation = { command: "addMember", args: [creatorId, projectId, displayName, personUUID] }; //TODO: Lösung finden, um Person zu übergeben.
-  let dependencies: uuid[] = [projectId];
-  if (!append_only_log) {
-    return;
-  }
-  append_only_log.add_operation(creatorId, operation, dependencies, personUUID);
-}
-
-changeName(projectId: uuid, personUuid: uuid, newName: string, append_only_log?: AppendOnlyLog): void {
-  const project = this.projects.get(projectId);
-  if (!project) {
-    throw new Error(`Projekt ${projectId} nicht gefunden`);
-  }
-
-  // 1) Suche das Person-Objekt in members
-  const currentMembers = project.members.get_set();
-  const oldPerson = [...currentMembers].find(p => p.uuid === personUuid);
-  if (!oldPerson) {
-    throw new Error(`Person ${personUuid} nicht in Projekt ${projectId}`);
-  }
-  oldPerson.displayName = newName;
-
-  // 2) Entferne die alte Version und füge die neue mit geändertem Namen hinzu
-
-  // 3) Operation fürs Log bauen
-  let operation: Operation = {
-    command: "changeName",
-    args: [projectId, personUuid, newName],
-  };
-
-  // 4) Abhängigkeiten – hier einfach das Projekt selbst
-  let dependencies: uuid[] = [projectId, personUuid]; //Welches nehmen? oder beide?
-
-  // 5) Neuen Log-Eintrag mit frischer entryID
-  const entryID: uuid = uuidv4();
-  if (!append_only_log) {
-    return;
-  }
-  append_only_log.add_operation(personUuid, operation, dependencies, projectId + personUuid + newName); //Welche entryID? Ist es Oke newName auch mitzugeben, seitdem auch
-}
-
-
-
-createTask(projectUUID: uuid, taskUUID: uuid, personUUID: uuid, title: string, description: string, append_only_log?: AppendOnlyLog): Task {
-  let project = this.projects.get(projectUUID);
-  if (!project) {
-    throw new Error(`Projekt ${projectUUID} nicht gefunden`);
-  }
-  let taskState: number = 0;
-  let task = new Task(taskUUID, taskState, title, description);
-  project!.tasks.add(task);
-  let operation: Operation = {
-    command: "createTask",
-    args: [projectUUID, personUUID, title, description],
-  };
-  let dependencies: uuid[] = [projectUUID];
-  if (!append_only_log) {
-    return task;
-  }
-  append_only_log!.add_operation(personUUID, operation, dependencies, taskUUID)
-  return task;
-}
-
-//Als eingabe bei TaskState wird stateCounter + neuer State erwartet.
-setTaskState(personUUID: uuid, projectUUID: uuid, taskUUID: uuid, newTaskState: number, append_only_log?: AppendOnlyLog): void {
-  let project = this.projects.get(projectUUID);
-  if (!project) {
-    throw new Error(`Projekt ${projectUUID} nicht gefunden`);
-  }
-  // 1) Pull out the live set of tasks
-  let tasks = project.tasks.get_set();
-  let task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
-  if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
-  task.changeState(newTaskState);
-
-  let operation: Operation = {
-    command: "setTaskState",
-    args: [personUUID, projectUUID, taskUUID, newTaskState.toString()],
-  };
-  let dependencies: uuid[] = [taskUUID];
-  if (!append_only_log) {
-    return;
-  }
-  //add_operation(creator: uuid, operation: Operation, dependencies: uuid[], entryID: uuid)
-  append_only_log.add_operation(personUUID, operation, dependencies, taskUUID + newTaskState.toString())   //TODO: Gute EntryID finden, Nur Task als dependency oder gerade alles?
-}
-
-
-
-
-
-
-}*/

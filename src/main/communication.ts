@@ -445,7 +445,7 @@ function findBroadcast(): string {
     const iface = interfaces[name]!;
 
     // only wireless connections are allowed
-    if (!(name.match('.*Wi-Fi.*') || name.match('.*WLAN.*') || name.match('wl.*'))) {
+    if (!(name.match('.*Wi-Fi.*') || name.match('.*WLAN.*') || name.match('wl.*') || name.match("en0"))) {
       console.log('skipped interface ' + name + ' because it is assumed not to be a wireless interface');
       continue;
     }
