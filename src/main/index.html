@@ -37,12 +37,9 @@
   <div id="main-scene-project" class="scene scene-project" style="display:none;">
     <button id="leave-project-btn">Leave Project</button>
     <!-- TODO diese view sollte dynamisch sein (siehe updateProjectPreview und showNotification für Inspiration)-->
-    <h1 id="project-title">Project-View</h1> <!-- Dieser Titel sollte mit dem Projekt-Name ersetzt werden -->
-    <select id="task-state-selection"> <!-- Das ist ein Beispielhaftes Dropdown mit events in renderer.ts task-state-selection sollte pro TAsk angezeigt werden und nur, falls es überhaupt eine TAsk gibt. --> 
-      <option value="todo">To Do</option>
-      <option value="inprogress">In Progress</option>
-      <option value="done">Done</option>
-    </select>
+    <h1 id="project-title">Project-View</h1> 
+    <ul id="project-view-list"> </ul>
+    <label>Add Task: <input id="new-task-input" placeholder="Task Title" value=""></label>
   </div>
 
 </body>

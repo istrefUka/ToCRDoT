@@ -28,6 +28,7 @@
 
 import { uuid } from './append_only_log';
 import './index.css';
+import { ProjectView, TaskView } from './Project';
 
 function switchScene(id: Scene) {
   const scenes = document.querySelectorAll(".scene");
@@ -101,7 +102,74 @@ function updateProjectPreview(projects: ProjectPreview[]) {
     projectPreviewList.appendChild(listitem);
   }
 }
+
+
+
 window.electronAPI.on('update-project-preview', (_, projects: ProjectPreview[]) => {updateProjectPreview(projects);})
+
+window.electronAPI.on('update-project-view', (_, projectView: ProjectView) => {updateProjectView(projectView);})
+
+const STATE_LABELS: Record<string,string> = {
+  todo:       'To Do',
+  inprogress: 'In Progress',
+  done:       'Done',
+};
+
+
+const projectViewList = document.getElementById('project-view-list');
+
+
+function updateProjectView(projectView: ProjectView) { //TODO: add Members of task.
+  projectViewList.innerHTML = ''; // clear contents of list
+  for (const p of projectView.taskViews) { // and then fill it back up with content
+    const listitem = document.createElement('li');
+
+    const taskIdDiv = document.createElement('div');
+    taskIdDiv.style.display = 'flex';
+    taskIdDiv.style.alignItems = 'center';   // vertikal mittig
+    taskIdDiv.style.gap = '8px'; 
+    const taskTitle = document.createElement('p');
+    taskTitle.textContent = p.task.title;
+    taskIdDiv.appendChild(taskTitle);
+    const select = document.createElement('select');
+    for (const stateKey of Object.keys(STATE_LABELS)) {
+    const opt = document.createElement('option');
+    opt.value = stateKey;
+    opt.textContent = STATE_LABELS[stateKey];
+    let comp:string;
+    switch (p!.task.state) {
+      case 0:
+        comp = 'todo';
+        break;
+      case 1:
+        comp = 'inprogress'
+        break;
+      case 2:
+        comp = 'done'
+        break;
+
+      default:
+        break;
+    }
+    // falls du schon einen aktuellen state hast, markiere
+    console.log("statekey : " + stateKey);
+    if (stateKey === comp) {
+      
+      opt.selected = true;
+    }
+    select.appendChild(opt);
+  }
+
+  select.addEventListener('change', (e) => {
+    window.electronAPI.send('change-project-task-state', p.task.taskUUID, select.value);
+  });
+
+    taskIdDiv.appendChild(select);
+
+    listitem.appendChild(taskIdDiv);
+    projectViewList.appendChild(listitem);
+  }
+}
 
 window.electronAPI.on('update-interface', (_, ip: string, port: number) => {
   ipInput.value = ip;
@@ -140,6 +208,19 @@ newProjectInput.addEventListener('keypress', (event) => {
   }
 })
 
+const newTaskInput = document.getElementById('new-task-input');
+newTaskInput.addEventListener('keypress', (event) => {
+  if (event.key === "Enter") {
+    const taskTitle = newTaskInput.value;
+    if (taskTitle.length < 4 || taskTitle.length > 20) {
+      // TODO (if there is time) make this 'error' an element of the GUI
+      console.log("project name must be between 4 and 20 characters long");
+      return;
+    }
+    window.electronAPI.send('create-new-task', newTaskInput.value);
+  }
+})
+
 window.electronAPI.on('new-project-in-network', (_, preview: ProjectPreview, rinfo: MessageInfo) => {
   showNotification(preview, rinfo);
 })
@@ -151,10 +232,10 @@ leaveProjectButton.addEventListener('click', () => {
 })
 
 // Beispiel 2:
-const taskStateDropDown = document.getElementById('task-state-selection');
+/*const taskStateDropDown = document.getElementById('task-state-selection');
 taskStateDropDown.addEventListener('change', () => {
   window.electronAPI.send('change-project-task-state', "<task-uuid>", taskStateDropDown.value);
-})
+})*/
 
 // Beispiel 3:
 /*window.electronAPI.on('update-project-view', project: ProjectView) {

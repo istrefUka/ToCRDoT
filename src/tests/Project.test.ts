@@ -27,7 +27,7 @@ describe("Project Tests", () => {
     project.addMember(personUUID, displayName2, personNew, true);
     project.addMember(personUUID, displayName3, personNew2, true);
     console.log(project.getOrderedMembers());
-    project.createTask(taskUUID, personUUID, title, title, true);
+    project.createTask(taskUUID, personUUID, title, true);
     project.changeName(personUUID, "Pascal", true);
     project.setTaskStateGUI(personUUID, taskUUID, "in Progress");
     project.addTaskAssigneeGUI(personUUID,taskUUID, personNew);

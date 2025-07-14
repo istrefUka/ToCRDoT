@@ -197,7 +197,11 @@ export type TaskView={
   bools: boolean[]
 }
 
-export type ProjectView= TaskView[];
+export type ProjectView={
+  taskViews: TaskView[],
+  members: Person[]
+}
+
 
 
 
@@ -263,7 +267,7 @@ export class Project {
           this.addMember(op.args[0], op.args[1], op.args[2], false);
           break;
         case "createTask":
-          this.createTask(op.args[0], op.args[1], op.args[2], op.args[3], false);
+          this.createTask(op.args[0], op.args[1], op.args[2], false);
           // Noch SetTaskState methode fehlt.
           break;
         case "setTaskStateAOL":
@@ -305,10 +309,10 @@ export class Project {
     this.append_only_log.add_operation(personUuid, operation, dependencies, entryID); //Welche entryID? Ist es Oke newName auch mitzugeben, seitdem auch
   }
 
-  createTask(taskUUID: uuid, personUUID: uuid, title: string, description: string, writeToAOL: boolean): Task { //TODO: Description wahscheinlich wegnehmen.
-
+  createTask(taskUUID: uuid, personUUID: uuid, title: string, writeToAOL: boolean): Task { //TODO: Description wahscheinlich wegnehmen.
+    console.log("createTask activated");
     const taskState = 0;
-    const task = new Task(taskUUID, taskState, title, description, personUUID);
+    const task = new Task(taskUUID, taskState, title, personUUID);
     this.tasks.add(task);
 
     if (!writeToAOL) {
@@ -316,7 +320,7 @@ export class Project {
     }
     const operation: Operation = {
       command: "createTask",
-      args: [taskUUID, personUUID, title, description],
+      args: [taskUUID, personUUID, title],
     };
     const dependencies: uuid[] = [this.projectUUID];
     this.append_only_log!.add_operation(personUUID, operation, dependencies, taskUUID)
@@ -348,7 +352,6 @@ export class Project {
     const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
     if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
     task.changeStateGUI(newTaskState);
-
     const operation: Operation = {
       command: "setTaskStateAOL",
       args: [taskUUID, task.get_State_Counter().toString()] //Anpassen!!!
@@ -412,7 +415,8 @@ export class Project {
     for(const task of this.tasks.get_set()){
        output.push(task.getTaskView(persons));
     }
-    return output;
+    let projectView: ProjectView = {taskViews: output, members: persons};
+    return projectView;
   }
 
 
@@ -432,16 +436,14 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
   taskUUID: uuid;
   state: number;
   title: string;
-  description: string;
   creator: uuid;
   stateCounter = 0;
   assignees: CausalSet<uuid>;
-  constructor(taskUUID: uuid, state: number, title: string, description: string, creator: uuid) {
+  constructor(taskUUID: uuid, state: number, title: string, creator: uuid) {
     this.taskUUID = taskUUID;
     this.state = state;
     this.title = title;
     this.assignees = new CausalSet<uuid>();
-    this.description = description;
     this.creator = creator;
   }
   changeState(newState: number): void {
@@ -455,18 +457,23 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
   changeStateGUI(newState: string) {
     let newerState = 0;
     switch (newState) {
-      case "To Do":
+      case "todo":
         newerState = 0;
+         console.log(newState);
         break;
-      case "in Progress":
+      case "inprogress":
         newerState = 1;
+         console.log(newState);
         break;
       case "done":
         newerState = 2;
+         console.log(newState);
         break;
       default:
         break;
     }
+    console.log("newState ausserhalbe switch: " + newState);
+    console.log("newer State" + newerState);
     this.stateCounter = newerState-this.state + this.stateCounter + 3;
     this.state = newerState;
   }

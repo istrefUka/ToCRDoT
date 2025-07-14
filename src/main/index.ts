@@ -19,7 +19,6 @@ if (require('electron-squirrel-startup')) {
 
 const app_path = app.getPath('userData');
 const projects_path = path.join(app_path, 'projects');
-console.log("projects path: " + projects_path);
 
 const createWindow = (): Electron.WebContents => {
   // Create the browser window.
@@ -47,17 +46,14 @@ async function runApp(web: Electron.WebContents) {
     web.send('switch-scene', 'scene-login')
     const username_p = new Promise<string>((resolve) => {
       ipcMain.on('login-submit', (_, username: string) => {
-        console.log(username);
         resolve(username);
       });
     });
     userdata = { userID: uuidv4(), userName: await username_p };
     saveUser(app_path, userdata);
   }
-  console.log('userdata:', userdata);
   let projects = loadProjectPreviews(projects_path);
   const ignored_projects = new Set(projects);
-  console.log('projects:', projects);
   web.send('update-project-preview', projects);
   ipcMain.on('ignore-project', (_, projectPreview: ProjectPreview) => {
     ignored_projects.add(projectPreview);
@@ -73,15 +69,12 @@ async function runApp(web: Electron.WebContents) {
   const pl = new ProjectListener(undefined, 8080);
   // more callbacks
   ipcMain.on('change-port', (_, port: number) => {
-    console.log('changing port to:', port);
     pl.setPort(port);
   });
   ipcMain.on('change-ip-address', (_, ip: string) => {
-    console.log('changing ip-address to:', ip);
     pl.setBroadcastIP(ip);
   });
   pl.init((preview, rinfo) => {
-    console.log("received preview:", preview);
     if (![...ignored_projects].every((val) => val.projectID !== preview.projectID)) {
       return;
     }
@@ -94,7 +87,8 @@ async function runApp(web: Electron.WebContents) {
   for (; ;) {
     const open_project_p = new Promise<uuid>((resolve) => {
       ipcMain.once('open-project', (_, projectID: uuid) => {
-        ipcMain.removeAllListeners('new-project');
+        //initializeNewProject(userdata.userID, userdata.userName, path.join(projects_path, projectID), projectID, projectTitle); //TODOOOOOOOOOO
+        ipcMain.removeAllListeners('create-new-project');
         resolve(projectID);
       });
       ipcMain.once('create-new-project', (_, projectTitle: string) => {
@@ -108,7 +102,6 @@ async function runApp(web: Electron.WebContents) {
     // wait for user to open a project
     const project_id = await open_project_p;
     pl.close();
-
     web.send('switch-scene', 'scene-project');
     await openProject(web, project_id, userdata.userID); //Hier wird das vorher neu kreierte/ angecklickte Projekt geöffnet.
     projects = loadProjectPreviews(projects_path);
@@ -129,12 +122,14 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
   } catch (e) {
     console.log('append-only log for project ' + projectID + ' doesnt exist yet'); //Darf dieser Fehler kommen?
   }
+  console.log("Append Only Log: " + a);
   const p = new Project(projectID, projectPreview.projectTitle, a);
   p.charge();
+  let taskViewArr = p.getProjectView();
+  web.send('update-project-view', taskViewArr);
   const pc = new ProjectCommunication(8080, undefined, projectID, projectPreview.projectTitle, a, (ops: Operation[]) => {
     p.update(ops);
   });
-
 
 
   // Beispiel 2: operation vom GUI empfangen
@@ -145,6 +140,12 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
     // Beispiel 3: zustand an das GUI schicken. 
     //web.send('update-project-view', p.getView()); //TOOOOOOOOODOOOOODODOODODODODODODOODODOODODODOODODDODDOODODODODOODODODDDOD
   });
+
+  ipcMain.on('create-new-task', (_, taskTitle: string) => {
+        const taskUUID = uuidv4();
+        p.createTask(taskUUID,userID,taskTitle,true);
+        web.send('update-project-view', p.getProjectView());
+      });
   
   await new Promise<void>((resolve) => {
     // Beispiel 1: index.ts <- renderer.ts
@@ -152,9 +153,11 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
   });
 
   pc.close();
+  p.save();
 
   // Cleanup von Beispiel 2
   ipcMain.removeAllListeners('change-project-task-state')
+  ipcMain.removeAllListeners('create-new-task')
   return;
 }
 
