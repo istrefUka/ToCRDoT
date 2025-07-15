@@ -152,7 +152,6 @@ function updateProjectView(projectView: ProjectView) { //TODO: add Members of ta
         break;
     }
     // falls du schon einen aktuellen state hast, markiere
-    console.log("statekey : " + stateKey);
     if (stateKey === comp) {
       
       opt.selected = true;
@@ -165,9 +164,29 @@ function updateProjectView(projectView: ProjectView) { //TODO: add Members of ta
   });
 
     taskIdDiv.appendChild(select);
-
+    for(let i = 0; i < p.bools.length; i++){ //TODO: Namen besser anzeigen.
+      console.log("p.bools.length     HHHHHHHHHHHHHHHHHHHHH::::    " + p.bools.length);//Wieso nur 1?
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = p.bools[i];
+      checkbox.id = i.toString();
+      console.log(projectView.members[i]);
+      console.log("taskUUID.     HHHHHHHHHHHHHHHHHHHHH::::    " + projectView.taskViews[i].task.taskUUID);
+      checkbox.addEventListener('change', () => {
+        p.bools[i] = checkbox.checked;
+        
+        window.electronAPI.send('change-assignees', p.bools[i], p.task.taskUUID, projectView.members[i].uuid);
+      })
+      const labelElement = document.createElement("label");
+      labelElement.htmlFor = checkbox.id;
+      labelElement.textContent = projectView.members[i].displayName;
+      taskIdDiv.appendChild(checkbox);
+      taskIdDiv.appendChild(labelElement);
+    }
+    
     listitem.appendChild(taskIdDiv);
     projectViewList.appendChild(listitem);
+    
   }
 }
 

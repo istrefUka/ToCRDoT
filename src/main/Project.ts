@@ -416,6 +416,7 @@ export class Project {
        output.push(task.getTaskView(persons));
     }
     let projectView: ProjectView = {taskViews: output, members: persons};
+    console.log("Amount of taskkkkkskskskskskskks " + projectView.taskViews.length);
     return projectView;
   }
 
