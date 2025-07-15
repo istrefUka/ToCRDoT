@@ -1,47 +1,47 @@
 <!DOCTYPE html>
 <html>
 
-<head>
-  <meta charset="UTF-8" />
-  <title>ToCRDoT</title>
+  <head>
+    <meta charset="UTF-8" />
+    <title>ToCRDoT</title>
 
-</head>
+  </head>
 
-<body>
-  <div id="main-scene-login" class="scene scene-login" , style="display:none;">
-    <h1>Login</h1>
-    <p>this is a login page</p>
-    <input value="" placeholder="Username" type="text" id="login-input">
-  </div>
-  <!--interface element (should always be seen except for the login screen)-->
-  <div id="interface" class="scene scene-project scene-home">
-    <label>Interface
-      <input id="ip-input" placeholder="Broadcast IP-Address">:<input id="port-input" placeholder="Port">
-    </label>
-  </div>
-  <div id="main-scene-home" class="scene scene-home">
-    <h1>Projects</h1>
-    <div style="width:100%; display:flex;">
-      <div style="float:left; width:auto;">
-        <p>These are the projects you have locally: </p>
-        <ul id="project-preview-list"></ul>
-      </div>
-      <div id="project-notification-div" style="float:right; width:40%; border:1px solid red; display:none;">
-        <p id="project-notification-text"></p>
-        <button id="project-notification-add-btn">add</button>
-        <button id="project-notification-ignore-btn">ignore</button>
-      </div>
+  <body>
+    <!--interface element (should always be seen except for the login screen)-->
+    <div id="interface" class="scene scene-project scene-home right-side-div">
+      <label>Interface
+        <input id="ip-input" placeholder="Broadcast IP-Address">:<input id="port-input" placeholder="Port">
+      </label>
     </div>
-    <label>Add Project: <input id="new-project-input" placeholder="Project Title" value=""></label>
-  </div>
-  <div id="main-scene-project" class="scene scene-project" style="display:none;">
-    <button id="leave-project-btn">Leave Project</button>
-    <!-- TODO diese view sollte dynamisch sein (siehe updateProjectPreview und showNotification für Inspiration)-->
+    <div id="main-scene-login" class="scene scene-login is-hidden">
+      <h1 class="centered-header">Login</h1> 
+        <p class="centered-paragraph">Enter your name:</p>
+        <div class="centered-div">
+          <input value="" placeholder="Username" type="text" id="login-input">
+        </div>
+    </div>
+    <div id="main-scene-home" class="scene scene-home">
+      <h1 class="centered-header">Projects</h1>
+      <div style="width:100%; display:flex;">
+        <div style="float:left; width:auto;">
+          <p>These are the projects you have locally: </p>
+          <ul id="project-preview-list"></ul>
+        </div>
+        <div id="project-notification-div" class="is-hidden" style="float:right; width:40%; border:1px solid red;">
+          <p id="project-notification-text"></p>
+          <button id="project-notification-add-btn">add</button>
+          <button id="project-notification-ignore-btn">ignore</button>
+        </div>
+      </div>
+      <label>Add Project: <input id="new-project-input" placeholder="Project Title" value=""></label>
+    </div>
+    <div id="main-scene-project" class="scene scene-project is-hidden">
+      <button id="leave-project-btn">Leave Project</button>
+      <!-- TODO diese view sollte dynamisch sein (siehe updateProjectPreview und showNotification für Inspiration)-->
     <h1 id="project-title">Project-View</h1> 
     <ul id="project-view-list"> </ul>
     <label>Add Task: <input id="new-task-input" placeholder="Task Title" value=""></label>
-  </div>
-
-</body>
-
+    </div>
+  </body>
 </html>

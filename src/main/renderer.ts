@@ -31,17 +31,11 @@ import './index.css';
 import { ProjectView, TaskView } from './Project';
 
 function switchScene(id: Scene) {
-  const scenes = document.querySelectorAll(".scene");
-  scenes.forEach(scene => {
-    (scene as HTMLElement).style.display = "none";
-  })
+  document.querySelectorAll<HTMLElement>('.scene')
+          .forEach(el => el.classList.add('is-hidden'));
 
-  const showScenes = document.querySelectorAll("." + id);
-  showScenes.forEach(scene => {
-    (scene as HTMLElement).style.display = "block";
-  });
-
-  // toggle some buttons maybe..
+  document.querySelectorAll<HTMLElement>('.' + id)
+          .forEach(el => el.classList.remove('is-hidden'));
 }
 
 const loginInput = document.getElementById('login-input');
