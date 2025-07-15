@@ -120,7 +120,7 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
   try {
     a.load();
   } catch (e) {
-    console.log('append-only log for project ' + projectID + ' doesnt exist yet'); //Darf dieser Fehler kommen?
+    console.log('append-only log for project ' + projectID + ' doesnt exist yet');
   }
   console.log("Append Only Log: " + a);
   const p = new Project(projectID, projectPreview.projectTitle, a);
@@ -139,6 +139,16 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
 
     // Beispiel 3: zustand an das GUI schicken. 
     //web.send('update-project-view', p.getView()); //TOOOOOOOOODOOOOODODOODODODODODODOODODOODODODOODODDODDOODODODODOODODODDDOD
+  });
+
+  ipcMain.on('change-assignees', (_, bool: boolean, taskUUID: uuid, personUUID: uuid) => {
+    if(bool){
+      p.addTaskAssigneeGUI(userID, taskUUID, personUUID);
+    }
+    else{
+      p.removeTaskAssigneeGUI(userID, taskUUID, personUUID);
+    }
+    web.send('update-project-view', p.getProjectView());
   });
 
   ipcMain.on('create-new-task', (_, taskTitle: string) => {
