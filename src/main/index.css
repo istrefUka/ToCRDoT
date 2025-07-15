@@ -2,6 +2,23 @@
   display: none;
 }
 
+.container {
+  display: flex;
+  flex-direction: column;
+}
+
+.child {
+  flex: 1;
+  padding-top: 5px;
+  padding-top: 5px;
+  box-sizing: border-box;
+}
+
+.left-side-div {
+  display: flex;  
+  justify-content: left;
+}
+
 .centered-div {
   display: flex;
   justify-content: center;

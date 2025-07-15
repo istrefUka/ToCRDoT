@@ -8,11 +8,26 @@
   </head>
 
   <body>
-    <!--interface element (should always be seen except for the login screen)-->
-    <div id="interface" class="scene scene-project scene-home right-side-div">
-      <label>Interface
-        <input id="ip-input" placeholder="Broadcast IP-Address">:<input id="port-input" placeholder="Port">
-      </label>
+    <div class="container">
+      <!--interface element (should always be seen except for the login screen)-->
+      <div id="interface" class="scene scene-project scene-home right-side-div child">
+        <label>Interface
+          <input id="ip-input" placeholder="Broadcast IP-Address">:<input id="port-input" placeholder="Port">
+        </label>
+      </div>
+      <div id="change-name" class="scene scene-project is-hidden child">
+        <div class="right-side-div">
+          <label>Change Name
+            <input value="" placeholder="New name" type="text" id="change-name-input">
+          </label>
+        </div>
+      </div>
+      <div id="leave-project" class="scene scene-project is-hidden child">
+        <div class="right-side-div">
+          <!-- I moved the leave project button here so its nicely aligned-->
+          <button id="leave-project-btn">Leave Project</button>
+        </div>
+      </div>
     </div>
     <div id="main-scene-login" class="scene scene-login is-hidden">
       <h1 class="centered-header">Login</h1> 
@@ -37,11 +52,10 @@
       <label>Add Project: <input id="new-project-input" placeholder="Project Title" value=""></label>
     </div>
     <div id="main-scene-project" class="scene scene-project is-hidden">
-      <button id="leave-project-btn">Leave Project</button>
       <!-- TODO diese view sollte dynamisch sein (siehe updateProjectPreview und showNotification für Inspiration)-->
-    <h1 id="project-title">Project-View</h1> 
-    <ul id="project-view-list"> </ul>
-    <label>Add Task: <input id="new-task-input" placeholder="Task Title" value=""></label>
+      <h1 id="project-title">Project-View</h1> 
+      <ul id="project-view-list"> </ul>
+      <label>Add Task: <input id="new-task-input" placeholder="Task Title" value=""></label>
     </div>
   </body>
 </html>

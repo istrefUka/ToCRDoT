@@ -255,3 +255,16 @@ taskStateDropDown.addEventListener('change', () => {
   console.log("rendering view", project);
   // TODO
 }*/
+
+const changeNameInput = document.getElementById('change-name-input');
+changeNameInput?.addEventListener('keypress', (event) => {
+  if (event.key === "Enter") {
+    const usernameInput = changeNameInput.value;
+    if (usernameInput.length < 4 || usernameInput.length > 20) {
+      // TODO implement a label in html to show this message
+      console.log('username must be between 4 and 20 characters long');
+      return;
+    }
+    window.electronAPI.send('change-username-submit', usernameInput);
+  }
+});
