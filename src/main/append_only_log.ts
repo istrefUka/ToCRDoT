@@ -226,7 +226,6 @@ export class AppendOnlyLog {
    */
   load(): void {
     this.entryMap = JSON.parse(fs.readFileSync(this.path, "utf-8").toString(), mapReviver);
-    console.log("append-only log saved successfully");
   }
 
   _search_entries(id: uuid, creator?: uuid): LogEntry | null {

@@ -86,7 +86,7 @@ async function runApp(web: Electron.WebContents) {
 
   for (; ;) {
     const open_project_p = new Promise<uuid>((resolve) => {
-      ipcMain.once('open-project', (_, projectID: uuid) => {
+      ipcMain.once('open-project', (_, projectID: uuid, projectTitle: string) => {
         //initializeNewProject(userdata.userID, userdata.userName, path.join(projects_path, projectID), projectID, projectTitle); //TODOOOOOOOOOO
         ipcMain.removeAllListeners('create-new-project');
         resolve(projectID);
@@ -122,7 +122,6 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
   } catch (e) {
     console.log('append-only log for project ' + projectID + ' doesnt exist yet');
   }
-  console.log("Append Only Log: " + a);
   const p = new Project(projectID, projectPreview.projectTitle, a);
   p.charge();
   let taskViewArr = p.getProjectView();
@@ -134,7 +133,6 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
 
   // Beispiel 2: operation vom GUI empfangen
   ipcMain.on('change-project-task-state', (_, taskID: uuid, newState: string) => {
-    console.log('changing state of task', taskID, 'to', newState);
     p.setTaskStateGUI(userID, taskID, newState);
 
     // Beispiel 3: zustand an das GUI schicken. 
@@ -168,6 +166,7 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
   // Cleanup von Beispiel 2
   ipcMain.removeAllListeners('change-project-task-state')
   ipcMain.removeAllListeners('create-new-task')
+  ipcMain.removeAllListeners('change-assignees')
   return;
 }
 

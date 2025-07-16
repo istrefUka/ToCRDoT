@@ -50,7 +50,7 @@ loginInput?.addEventListener('keypress', (event) => {
     const username = loginInput.value;
     if (username.length < 4 || username.length > 20) {
       // TODO implement a label in html to show this message
-      console.log('username must be between 4 and 20 characters long');
+      ('username must be between 4 and 20 characters long');
       return;
     }
     window.electronAPI.send('login-submit', username);
@@ -91,7 +91,7 @@ function updateProjectPreview(projects: ProjectPreview[]) {
     projectButton.textContent = p.projectTitle;
     projectButton.style.float = "left";
     projectButton.addEventListener('click', () => {
-      window.electronAPI.send('open-project', p.projectID);
+      window.electronAPI.send('open-project', p.projectID, p.projectTitle);
     });
     const projIdDiv = document.createElement('div');
     projIdDiv.appendChild(projectButton);
@@ -165,13 +165,12 @@ function updateProjectView(projectView: ProjectView) { //TODO: add Members of ta
 
     taskIdDiv.appendChild(select);
     for(let i = 0; i < p.bools.length; i++){ //TODO: Namen besser anzeigen.
-      console.log("p.bools.length     HHHHHHHHHHHHHHHHHHHHH::::    " + p.bools.length);//Wieso nur 1?
+      
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = p.bools[i];
       checkbox.id = i.toString();
-      console.log(projectView.members[i]);
-      console.log("taskUUID.     HHHHHHHHHHHHHHHHHHHHH::::    " + projectView.taskViews[i].task.taskUUID);
+      
       checkbox.addEventListener('change', () => {
         p.bools[i] = checkbox.checked;
         
@@ -220,7 +219,7 @@ newProjectInput.addEventListener('keypress', (event) => {
     const projectTitle = newProjectInput.value;
     if (projectTitle.length < 4 || projectTitle.length > 20) {
       // TODO (if there is time) make this 'error' an element of the GUI
-      console.log("project name must be between 4 and 20 characters long");
+      ("project name must be between 4 and 20 characters long");
       return;
     }
     window.electronAPI.send('create-new-project', newProjectInput.value);
@@ -233,7 +232,7 @@ newTaskInput.addEventListener('keypress', (event) => {
     const taskTitle = newTaskInput.value;
     if (taskTitle.length < 4 || taskTitle.length > 20) {
       // TODO (if there is time) make this 'error' an element of the GUI
-      console.log("project name must be between 4 and 20 characters long");
+      
       return;
     }
     window.electronAPI.send('create-new-task', newTaskInput.value);
@@ -258,6 +257,6 @@ taskStateDropDown.addEventListener('change', () => {
 
 // Beispiel 3:
 /*window.electronAPI.on('update-project-view', project: ProjectView) {
-  console.log("rendering view", project);
+  
   // TODO
 }*/

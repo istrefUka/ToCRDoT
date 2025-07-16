@@ -15,18 +15,16 @@ export class CausalSet<T> {
 
     const val = this.s.get(x) ?? 0;
     if (val % 2 === 1) {
-      console.log(`add: value ${x} already in set`);
       return val;
     }
     this.s.set(x, val + 1);
-    return val+1;
+    return val + 1;
   }
 
   addAOL(x: T, value: number): void {
 
     const val = this.s.get(x) ?? 0;
     if (val % 2 === 1) {
-      console.log(`add: value ${x} already in set`);
       return;
     }
     if (val >= value) {
@@ -40,24 +38,22 @@ export class CausalSet<T> {
   remove(x: T): number {
     const val = this.s.get(x) ?? 0;
     if (val % 2 === 0) {
-      console.log(`remove: value ${x} already removed`);
+      (`remove: value ${x} already removed`);
       return val;
     }
     this.s.set(x, val + 1);
-    return val+1;
+    return val + 1;
   }
 
   removeAOL(x: T, value: number): void {
 
     const val = this.s.get(x) ?? 0;
     if (val % 2 === 0) {
-      console.log(`remove: value ${x} already removed`);
       return;
     }
     if (val >= value) {
       return;
     }
-    console.log("remove AOL" + value);
     this.s.set(x, value);
     return;
   }
@@ -74,11 +70,9 @@ export class CausalSet<T> {
   }
 
   debug(): void {
-    console.log(this.s);
   }
 
   print(): void {
-    console.log(this.get_set());
   }
 
   /**
@@ -118,71 +112,14 @@ export class CausalSet<T> {
 
 
 export class GrowOnlySet<T> {
-  private s: Map<T, number>;
-
-  constructor() {
-    this.s = new Map<T, number>();
-  }
+  private s: T[] = [];
 
   add(x: T): void {
-    const val = this.s.get(x) ?? 0;
-    if (val % 2 === 1) {
-      console.log(`add: value ${x} already in set`);
-      return;
-    }
-    this.s.set(x, val + 1);
+    this.s.push(x);
   }
 
-  get_set(): Set<T> {
-    const output = new Set<T>();
-    for (const [key, value] of this.s) {
-      if (value % 2 === 1) {
-        output.add(key);
-      }
-    }
-    return output;
-  }
-
-  debug(): void {
-    console.log(this.s);
-  }
-
-  print(): void {
-    console.log(this.get_set());
-  }
-
-  /**
-   * Merges in any higher “timestamps” from another causal set.
-   */
-  merge(other: GrowOnlySet<T>): void {
-    // First, update existing keys if other has a bigger counter
-    for (const [key, value] of this.s) {
-      const otherval = other.s.get(key) ?? 0;
-      if (otherval > value) {
-        this.s.set(key, otherval);
-      }
-    }
-    // Then add any keys that we didn’t have at all
-    for (const [key, value] of other.s) {
-      if (!this.s.has(key)) {
-        this.s.set(key, value);
-      }
-    }
-  }
-
-  toString(): string {
-    const parts: string[] = ["CausalSet: {"];
-    let first = true;
-    for (const [key, value] of this.s) {
-      if (!first) parts.push(", ");
-      first = false;
-      parts.push(String(key));
-      if (value % 2 === 0) {
-        parts.push(": REMOVED");
-      }
-    }
-    parts.push("}");
-    return parts.join("");
+  get_Array(): T[] {
+    return this.s;
   }
 }
 
@@ -192,12 +129,12 @@ export class GrowOnlySet<T> {
 //TODO: update Methode
 //TODO: boolean statt AOL übergeben
 
-export type TaskView={
-  task:Task,
+export type TaskView = {
+  task: Task,
   bools: boolean[]
 }
 
-export type ProjectView={
+export type ProjectView = {
   taskViews: TaskView[],
   members: Person[]
 }
@@ -211,7 +148,7 @@ export class Project {
   projectUUID: uuid;
   creator: uuid | undefined; //Gute Lösung? Alternative wäre nur anfänglicher Kostruktor und mit init methode.
   members: GrowOnlySet<Person>;
-  tasks: GrowOnlySet<Task>;
+  tasks: GrowOnlySet<Task>; // In Array umwandeln, vlt besser
   title: string;
 
   /**
@@ -247,7 +184,7 @@ export class Project {
     this.append_only_log.save();
   }
 
-  charge() { 
+  charge() {
     const ops = this.append_only_log.query_missing_operations_ordered(new Map());
     console.log(ops);
     this.update(ops);
@@ -267,8 +204,8 @@ export class Project {
           this.addMember(op.args[0], op.args[1], op.args[2], false);
           break;
         case "createTask":
+          console.log("Creating Task");
           this.createTask(op.args[0], op.args[1], op.args[2], false);
-          // Noch SetTaskState methode fehlt.
           break;
         case "setTaskStateAOL":
           this.setTaskStateAOL(op.args[0], Number(op.args[1]));
@@ -289,7 +226,7 @@ export class Project {
   }
 
   changeName(personUuid: uuid, newName: string, writeToAOL: boolean): void {
-    const currentMembers = this.members.get_set();
+    const currentMembers = this.members.get_Array();
     const oldPerson = [...currentMembers].find(p => p.uuid === personUuid);
     if (!oldPerson) {
       throw new Error(`Person ${personUuid} nicht in Projekt ${this.title}`);
@@ -339,18 +276,33 @@ export class Project {
     this.append_only_log.add_operation(creatorId, operation, dependencies, personUUID);
   }
 
-  setTaskStateAOL(taskUUID: uuid, newTaskState: number): void {//ohne AppendOnly Log!
-    const tasks = this.tasks.get_set();
-    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
-    if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
+  setTaskStateAOL(taskUUID: uuid, newTaskState: number): void {
+    let task = null;
+    console.log("Set: " + this.tasks.get_Array());
+    for (const t of this.tasks.get_Array()) {
+      if (t.taskUUID === taskUUID) {
+        task = t;
+        break;
+      }
+    }
+    if (!task) {
+      console.warn(`Task ${taskUUID} nicht gefunden`);
+    }
     task.changeState(newTaskState);
   }
 
   setTaskStateGUI(personUUID: uuid, taskUUID: uuid, newTaskState: string): void {
-    // 1) Pull out the live set of tasks
-    const tasks = this.tasks.get_set();
-    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
-    if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
+    console.log("Set: " + this.tasks.get_Array());
+    let task = null;
+    for (const t of this.tasks.get_Array()) {
+      if (t.taskUUID === taskUUID) {
+        task = t;
+        break;
+      }
+    }
+    if (!task) {
+      console.warn(`Task ${taskUUID} nicht gefunden`);
+    }
     task.changeStateGUI(newTaskState);
     const operation: Operation = {
       command: "setTaskStateAOL",
@@ -362,14 +314,22 @@ export class Project {
     this.append_only_log.add_operation(personUUID, operation, dependencies, entryID);   //TODO: Gute EntryID finden, Nur Task als dependency oder gerade alles?
   }
   addTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid) {
-    const tasks = this.tasks.get_set();
-    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
-    if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
+    console.log("Set: " + this.tasks.get_Array());
+    let task = null;
+    for (const t of this.tasks.get_Array()) {
+      if (t.taskUUID === taskUUID) {
+        task = t;
+        break;
+      }
+    }
+    if (!task) {
+      console.warn(`Task ${taskUUID} nicht gefunden`);
+    }
     const val = task.assignees.add(personUUID);
-    console.log(val);
+    (val);
     const operation: Operation = {
       command: "addTaskAssigneeAOL",
-      args: [taskUUID, personUUID, val.toString()] 
+      args: [taskUUID, personUUID, val.toString()]
     };
     const dependencies: uuid[] = [taskUUID];
     const entryID = uuidv4();
@@ -377,20 +337,35 @@ export class Project {
     this.append_only_log.add_operation(creatorID, operation, dependencies, entryID);
   }
   addTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, value: number) {
-    const tasks = this.tasks.get_set();
-    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
-    if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
+    console.log("Set: " + this.tasks.get_Array());
+    let task = null;
+    for (const t of this.tasks.get_Array()) {
+      if (t.taskUUID === taskUUID) {
+        task = t;
+        break;
+      }
+    }
+    if (!task) {
+      console.warn(`Task ${taskUUID} nicht gefunden`);
+    }
     task.assignees.addAOL(personUUID, value);
   }
   removeTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid) {
-    const tasks = this.tasks.get_set();
-    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
-    if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
+    console.log("Set: " + this.tasks.get_Array());
+    let task = null;
+    for (const t of this.tasks.get_Array()) {
+      if (t.taskUUID === taskUUID) {
+        task = t;
+        break;
+      }
+    }
+    if (!task) {
+      console.warn(`Task ${taskUUID} nicht gefunden`);
+    }
     const val = task.assignees.remove(personUUID);
-    console.log(val);
     const operation: Operation = {
       command: "removeTaskAssigneeAOL",
-      args: [taskUUID, personUUID, val.toString()] 
+      args: [taskUUID, personUUID, val.toString()]
     };
     const dependencies: uuid[] = [taskUUID];
     const entryID = uuidv4();
@@ -398,25 +373,32 @@ export class Project {
     this.append_only_log.add_operation(creatorID, operation, dependencies, entryID);
   }
   removeTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, value: number) {
-    const tasks = this.tasks.get_set();
-    const task = Array.from(tasks).find(t => t.taskUUID === taskUUID);
-    if (!task) throw new Error(`Task ${taskUUID} nicht gefunden`);
+    let task = null;
+    for (const t of this.tasks.get_Array()) {
+      if (t.taskUUID === taskUUID) {
+        task = t;
+        break;
+      }
+    }
+    if (!task) {
+      console.warn(`Task ${taskUUID} nicht gefunden`);
+    }
     task.assignees.removeAOL(personUUID, value);
   }
 
   getOrderedMembers(): Person[] {
-  const arr = Array.from(this.members.get_set());
-  arr.sort((a, b) => a.displayName.localeCompare(b.displayName));
-  return arr;
-}
-  getProjectView(): ProjectView{ //TODO
+    const arr = Array.from(this.members.get_Array());
+    arr.sort((a, b) => a.displayName.localeCompare(b.displayName));
+    return arr;
+  }
+  getProjectView(): ProjectView { //TODO
     let output: TaskView[] = [];
     let persons = this.getOrderedMembers();
-    for(const task of this.tasks.get_set()){
-       output.push(task.getTaskView(persons));
+    for (const task of this.tasks.get_Array()) {
+      output.push(task.getTaskView(persons));
     }
-    let projectView: ProjectView = {taskViews: output, members: persons};
-    console.log("Amount of taskkkkkskskskskskskks " + projectView.taskViews.length);
+    let projectView: ProjectView = { taskViews: output, members: persons };
+    ("Amount of taskkkkkskskskskskskks " + projectView.taskViews.length);
     return projectView;
   }
 
@@ -460,31 +442,30 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
     switch (newState) {
       case "todo":
         newerState = 0;
-         console.log(newState);
+        (newState);
         break;
       case "inprogress":
         newerState = 1;
-         console.log(newState);
+        (newState);
         break;
       case "done":
         newerState = 2;
-         console.log(newState);
         break;
       default:
         break;
     }
-    console.log("newState ausserhalbe switch: " + newState);
-    console.log("newer State" + newerState);
-    this.stateCounter = newerState-this.state + this.stateCounter + 3;
+    ("newState ausserhalbe switch: " + newState);
+    ("newer State" + newerState);
+    this.stateCounter = newerState - this.state + this.stateCounter + 3;
     this.state = newerState;
   }
-  getTaskView(persons: Person[]): TaskView{ //TODO
+  getTaskView(persons: Person[]): TaskView { //TODO
     let bools: boolean[] = [];
-    for(let i = 0; i < persons.length; i++){
+    for (let i = 0; i < persons.length; i++) {
       let isAssigned = this.assignees.get_set().has(persons[i].uuid);
       bools.push(isAssigned);
     }
-    return {task: this, bools: bools};
+    return { task: this, bools: bools };
   }
   get_State_Counter(): number {
     return this.stateCounter;
