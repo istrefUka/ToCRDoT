@@ -52,7 +52,8 @@ class BaseCommunication {
   }
 
   send(msg: Buffer) {
-    this.socket.send(msg);
+    console.log("send activated");
+    this.socket.send(msg, this._port, this.broadcast_ip); 
     console.log('sent message:', msg.toString('utf-8'), 'to', this.broadcast_ip, this._port);
   }
 
@@ -98,6 +99,7 @@ export class ProjectCommunication {
   private crdt_update_callback: (ops: Operation[]) => void;
   public delay_ms: number;
   private communication: BaseCommunication;
+  private messageLoopBool: boolean;
 
   /**
    * The init-method should be called after this constructor. 
@@ -109,6 +111,7 @@ export class ProjectCommunication {
    * @param crdt_update_callback this callback is executed when the append-only log changes. It receives the changes as operations since the last update. 
    */
   constructor(port: number, broadcast_ip: string | undefined, projectID: uuid, projectName: string, appendOnlyLog: AppendOnlyLog, crdt_update_callback: (ops: Operation[]) => void) {
+    this.messageLoopBool = true;
     this.communication = new BaseCommunication(broadcast_ip, port);
     this.projectID = projectID;
     this.projectName = projectName;
@@ -208,9 +211,15 @@ export class ProjectCommunication {
    */
   async messageLoop() {
     for (;;) {
+      if(!this.messageLoopBool){
+        return;
+      }
       this.sendMessage(this.appendOnlyLog.get_frontier());
       await sleep(this.delay_ms);
     }
+  }
+  messageLoopFalse(){
+    this.messageLoopBool = false;
   }
 }
 

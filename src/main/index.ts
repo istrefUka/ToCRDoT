@@ -80,6 +80,7 @@ async function runApp(web: Electron.WebContents) {
     }
     web.send('new-project-in-network', preview);
   });
+  console.log("pl.broadcast_ip: " + pl.broadcast_ip);
   web.send('update-interface', pl.broadcast_ip, pl.port);
   // TODO: (if there is time) pl.onIfaceChange( (ip, port) => { web.send('update-interface', ip, port) } );
   web.send('switch-scene', 'scene-home');
@@ -126,17 +127,14 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
   p.charge();
   let taskViewArr = p.getProjectView();
   web.send('update-project-view', taskViewArr);
-  const pc = new ProjectCommunication(8080, undefined, projectID, projectPreview.projectTitle, a, (ops: Operation[]) => {
+  const pc = new ProjectCommunication(8080, undefined, projectID, projectPreview.projectTitle, a, (ops: Operation[]) => { 
     p.update(ops);
   });
 
 
-  // Beispiel 2: operation vom GUI empfangen
   ipcMain.on('change-project-task-state', (_, taskID: uuid, newState: string) => {
     p.setTaskStateGUI(userID, taskID, newState);
-
-    // Beispiel 3: zustand an das GUI schicken. 
-    //web.send('update-project-view', p.getView()); //TOOOOOOOOODOOOOODODOODODODODODODOODODOODODODOODODDODDOODODODODOODODODDDOD
+    web.send('update-project-view', p.getProjectView());
   });
 
   ipcMain.on('change-assignees', (_, bool: boolean, taskUUID: uuid, personUUID: uuid) => {
@@ -159,12 +157,13 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
       p.changeName(userID, username, true);
       web.send('update-project-view', p.getProjectView());
     });
-  
+    pc.messageLoop();
   await new Promise<void>((resolve) => {
     // Beispiel 1: index.ts <- renderer.ts
-    ipcMain.once('leave-project', () => {resolve()})
+    ipcMain.once('leave-project', () => {
+      pc.messageLoopFalse();
+      resolve()})
   });
-
   pc.close();
   p.save();
 
