@@ -173,8 +173,12 @@ function updateProjectView(projectView: ProjectView) { //TODO: add Members of ta
       const labelElement = document.createElement("label");
       labelElement.htmlFor = checkbox.id;
       labelElement.textContent = projectView.members[i].displayName;
-      taskIdDiv.appendChild(checkbox);
-      taskIdDiv.appendChild(labelElement);
+      let divCheckboxNamed = document.createElement('div');
+      divCheckboxNamed.style.display      = 'flex';
+      divCheckboxNamed.style.flexDirection = 'column';
+      divCheckboxNamed.appendChild(labelElement);
+      divCheckboxNamed.appendChild(checkbox);
+      taskIdDiv.appendChild(divCheckboxNamed);
     }
     
     listitem.appendChild(taskIdDiv);
@@ -242,18 +246,6 @@ const leaveProjectButton = document.getElementById('leave-project-btn');
 leaveProjectButton.addEventListener('click', () => {
   window.electronAPI.send('leave-project');
 })
-
-// Beispiel 2:
-/*const taskStateDropDown = document.getElementById('task-state-selection');
-taskStateDropDown.addEventListener('change', () => {
-  window.electronAPI.send('change-project-task-state', "<task-uuid>", taskStateDropDown.value);
-})*/
-
-// Beispiel 3:
-/*window.electronAPI.on('update-project-view', project: ProjectView) {
-  
-  // TODO
-}*/
 
 const changeNameInput = document.getElementById('change-name-input');
 changeNameInput?.addEventListener('keypress', (event) => {
