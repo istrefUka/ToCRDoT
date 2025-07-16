@@ -154,6 +154,11 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
         p.createTask(taskUUID,userID,taskTitle,true);
         web.send('update-project-view', p.getProjectView());
       });
+
+  ipcMain.on('change-username-submit', (_, username: string) => {
+      p.changeName(userID, username, true);
+      web.send('update-project-view', p.getProjectView());
+    });
   
   await new Promise<void>((resolve) => {
     // Beispiel 1: index.ts <- renderer.ts

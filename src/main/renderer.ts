@@ -31,17 +31,11 @@ import './index.css';
 import { ProjectView, TaskView } from './Project';
 
 function switchScene(id: Scene) {
-  const scenes = document.querySelectorAll(".scene");
-  scenes.forEach(scene => {
-    (scene as HTMLElement).style.display = "none";
-  })
+  document.querySelectorAll<HTMLElement>('.scene')
+          .forEach(el => el.classList.add('is-hidden'));
 
-  const showScenes = document.querySelectorAll("." + id);
-  showScenes.forEach(scene => {
-    (scene as HTMLElement).style.display = "block";
-  });
-
-  // toggle some buttons maybe..
+  document.querySelectorAll<HTMLElement>('.' + id)
+          .forEach(el => el.classList.remove('is-hidden'));
 }
 
 const loginInput = document.getElementById('login-input');
@@ -260,3 +254,16 @@ taskStateDropDown.addEventListener('change', () => {
   
   // TODO
 }*/
+
+const changeNameInput = document.getElementById('change-name-input');
+changeNameInput?.addEventListener('keypress', (event) => {
+  if (event.key === "Enter") {
+    const usernameInput = changeNameInput.value;
+    if (usernameInput.length < 4 || usernameInput.length > 20) {
+      // TODO implement a label in html to show this message
+      console.log('username must be between 4 and 20 characters long');
+      return;
+    }
+    window.electronAPI.send('change-username-submit', usernameInput);
+  }
+});
