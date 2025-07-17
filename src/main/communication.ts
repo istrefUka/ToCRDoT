@@ -8,7 +8,7 @@ import { toBase64, fromBase64, mapReplacer, isLogEntry, isFrontier } from './uti
  * TODO (if there is time) implement callback to notify user when the ip and the port were successfully set in the actual socket with the actual ip and port of the socket. 
  */
 class BaseCommunication {
-  public broadcast_ip: string;
+  public broadcast_ip: string | null;
   public socket: Socket;
   private _port: number;
   private onMessageCallback: ((msg: string, rinfo: MessageInfo) => void) | undefined = undefined;
@@ -16,7 +16,7 @@ class BaseCommunication {
   constructor(broadcast_ip: string | undefined, port: number) {
     this.socket = dgram.createSocket('udp4');
     this.broadcast_ip = broadcast_ip ?? findBroadcast();
-    this._port = port;
+    this._port = port | 8080;
   }
 
   init(): Promise<void> {
@@ -150,6 +150,7 @@ export class ProjectCommunication {
   }
 
   handleMessage(msg: { projectID: uuid, projectName: string, data: LogEntry | Frontier }) {
+    console.log("handleMessage msg: " + msg.data);
     if (isLogEntry(msg.data)) {
       this.appendOnlyLog.update([msg.data]);
       console.log("isLogEntry activated");
@@ -448,7 +449,7 @@ function closeSocket(socket: Socket): Promise<void> {
  * 
  * @returns The broadcast ip address
  */
-function findBroadcast(): string {
+function findBroadcast(): string | null {
   const interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = os.networkInterfaces();
   //console.log(interfaces);
 
@@ -509,7 +510,7 @@ function findBroadcast(): string {
       }
     }
   }
-  throw new Error("No wireless interface found!");
+  return null;
 }
 
 
