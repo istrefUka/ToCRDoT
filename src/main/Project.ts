@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import { uuid, LogEntry, Person, AppendOnlyLog, Operation } from "./append_only_log";
 import { v4 as uuidv4 } from 'uuid';
 import { skip } from "node:test";
+import { WebContents } from 'electron';
 
 export class CausalSet<T> {
   private s: Map<T, number>;
@@ -190,32 +191,53 @@ export class Project {
     this.update(ops);
   }
 
-  update(ops: Operation[]) { //TODO: Auf Operation statt LogEntry wechseln
+  update(ops: Operation[], web?: WebContents) { //TODO: GUI-updaten nach dieser Operation
     for (let i = 0; i < ops.length; i++) {
       const op = ops[i];
       switch (op.command) {
         case "init":
           this.init(op.args[0], op.args[1], false);
+          if(web){
+            web.send('update-project-view', this.getProjectView());
+          }
           break;
         case "changeName":
           this.changeName(op.args[0], op.args[1], false);
+          if(web){
+            web.send('update-project-view', this.getProjectView());
+          }
           break;
         case "addMember":
           this.addMember(op.args[0], op.args[1], op.args[2], false);
+          if(web){
+            web.send('update-project-view', this.getProjectView());
+          }
           break;
         case "createTask":
           console.log("Creating Task");
           this.createTask(op.args[0], op.args[1], op.args[2], false);
+          if(web){
+            web.send('update-project-view', this.getProjectView());
+          }
           break;
         case "setTaskStateAOL":
           this.setTaskStateAOL(op.args[0], Number(op.args[1]));
+          if(web){
+            web.send('update-project-view', this.getProjectView());
+          }
           break;
         case "addTaskAssigneeAOL":
           this.addTaskAssigneeAOL(op.args[0], op.args[1], Number(op.args[2]));
+          if(web){
+            web.send('update-project-view', this.getProjectView());
+          }
           break;
 
         case "removeTaskAssigneeAOL":
           this.removeTaskAssigneeAOL(op.args[0], op.args[1], Number(op.args[2]));
+          if(web){
+            web.send('update-project-view', this.getProjectView());
+          }
           break;
 
 

@@ -152,8 +152,10 @@ export class ProjectCommunication {
   handleMessage(msg: { projectID: uuid, projectName: string, data: LogEntry | Frontier }) {
     if (isLogEntry(msg.data)) {
       this.appendOnlyLog.update([msg.data]);
+      console.log("isLogEntry activated");
       this.appendOnlyLog.save();
     } else if (isFrontier(msg.data)) {
+      console.log("isFrontier activated");
       const frontier = msg.data as Frontier;
       for (const entry of this.appendOnlyLog.query_missing_entries_ordered(frontier)) {
         this.sendMessage(entry);
@@ -199,6 +201,7 @@ export class ProjectCommunication {
    */
   sendMessage(data: LogEntry | Frontier): void {
     try {
+      console.log("sendMessage activated");
       const enc: Buffer = Buffer.from(this.encodeMessage(data), 'utf8');
       this.communication.send(enc);
     } catch (error) {

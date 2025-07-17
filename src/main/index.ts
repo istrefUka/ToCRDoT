@@ -116,6 +116,7 @@ async function runApp(web: Electron.WebContents) {
 
 async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
   const projectPreview = loadProjectPreview(projects_path, projectID);
+  console.log("PATH: " + projects_path);
   web.send('set-project-title', projectPreview.projectTitle);
   const a = new AppendOnlyLog(path.join(projects_path, projectID, "aol.json"));
   try {
@@ -128,8 +129,9 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
   let taskViewArr = p.getProjectView();
   web.send('update-project-view', taskViewArr);
   const pc = new ProjectCommunication(8080, undefined, projectID, projectPreview.projectTitle, a, (ops: Operation[]) => { 
-    p.update(ops);
+    p.update(ops, web);
   });
+  await pc.init();
 
 
   ipcMain.on('change-project-task-state', (_, taskID: uuid, newState: string) => {
