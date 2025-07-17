@@ -88,7 +88,6 @@ async function runApp(web: Electron.WebContents) {
   for (; ;) {
     const open_project_p = new Promise<uuid>((resolve) => {
       ipcMain.once('open-project', (_, projectID: uuid, projectTitle: string) => {
-        //initializeNewProject(userdata.userID, userdata.userName, path.join(projects_path, projectID), projectID, projectTitle); //TODOOOOOOOOOO
         ipcMain.removeAllListeners('create-new-project');
         resolve(projectID);
       });
@@ -104,7 +103,7 @@ async function runApp(web: Electron.WebContents) {
     const project_id = await open_project_p;
     pl.close();
     web.send('switch-scene', 'scene-project');
-    await openProject(web, project_id, userdata.userID); //Hier wird das vorher neu kreierte/ angecklickte Projekt geöffnet.
+    await openProject(web, project_id, userdata.userID, userdata.userName); //Hier wird das vorher neu kreierte/ angecklickte Projekt geöffnet.
     projects = loadProjectPreviews(projects_path);
     web.send('update-project-preview', projects);
     web.send('switch-scene', 'scene-home');
@@ -114,7 +113,7 @@ async function runApp(web: Electron.WebContents) {
 }
 
 
-async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
+async function openProject(web: WebContents, projectID: uuid, userID: uuid, userName: string) {
   const projectPreview = loadProjectPreview(projects_path, projectID);
   console.log("PATH: " + projects_path);
   web.send('set-project-title', projectPreview.projectTitle);
@@ -130,6 +129,7 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid) {
   web.send('update-project-view', taskViewArr);
   const pc = new ProjectCommunication(8080, undefined, projectID, projectPreview.projectTitle, a, (ops: Operation[]) => { 
     p.update(ops, web);
+    p.addMember(userID,userName,userID,true);
   });
   await pc.init();
 
