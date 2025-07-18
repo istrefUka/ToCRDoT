@@ -129,7 +129,18 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid, user
   web.send('update-project-view', taskViewArr);
   const pc = new ProjectCommunication(8080, undefined, projectID, projectPreview.projectTitle, a, (ops: Operation[]) => { 
     p.update(ops, web);
-    p.addMember(userID,userName,userID,true);
+    let frontier = a.get_frontier();
+    let count = frontier.get(userID);
+    let resIDs = a._query_missing_entryIDs_ordered(frontier);
+    let resIDBool = false;
+    for(let i = 0; i < resIDs.length; i++){
+      if(resIDs[i] === userID){
+        resIDBool = true;
+      }
+    }
+    if(count >= 2 && resIDBool){
+      p.addMember(userID, userName, userID, true);
+    }
   });
   await pc.init();
 
