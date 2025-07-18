@@ -31,6 +31,8 @@ import './index.css';
 import { ProjectView, TaskView } from './Project';
 import leaveButtonImage from "./../../assets/leave-button.png";
 import gotoProjectButtonImage from "./../../assets/goto-project-button.png";
+import addProjectButtonImage from "./../../assets/add-project-button.png";
+import ignoreProjectButtonImage from "./../../assets/ignore-project-button.png";
 
 function switchScene(id: Scene) {
   document.querySelectorAll<HTMLElement>('.scene')
@@ -274,13 +276,24 @@ changeNameInput?.addEventListener('keypress', (event) => {
       return;
     }
     window.electronAPI.send('change-username-submit', usernameInput);
+    changeNameInput.value = '';
   }
 });
 
 const leaveButton = document.getElementById('leave-project-btn');
+const img1 = document.createElement('img');
+img1.src = leaveButtonImage;
+img1.alt = 'leave project';
+leaveButton?.appendChild(img1);
 
-const img = document.createElement('img');
-img.src = leaveButtonImage;
-img.alt = 'leave project';
+const addProjectButton = document.getElementById('project-notification-add-btn');
+const img2 = document.createElement('img');
+img2.src = addProjectButtonImage;
+img2.alt = 'add project';
+addProjectButton?.appendChild(img2);
 
-leaveButton?.appendChild(img);
+const ignoreProjectButton = document.getElementById('project-notification-ignore-btn');
+const img3 = document.createElement('img');
+img3.src = ignoreProjectButtonImage;
+img3.alt = 'ignore project';
+ignoreProjectButton?.appendChild(img3);

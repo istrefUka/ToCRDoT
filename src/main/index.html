@@ -44,10 +44,16 @@
           <p>These are the projects you have locally: </p>
           <ul id="project-preview-list"></ul>
         </div>
-        <div id="project-notification-div" class="is-hidden" style="float:right; width:40%; border:1px solid red;">
-          <p id="project-notification-text"></p>
-          <button id="project-notification-add-btn">add</button>
-          <button id="project-notification-ignore-btn">ignore</button>
+        <div id="project-notification-div" class="is-hidden notification-div">
+          <p id="project-notification-text"> do you want to join project</p>
+          <div style="display: flex; gap: 1vw;">
+            <div class="child right-side-div">
+              <button id="project-notification-add-btn" class="enter-button"></button>
+            </div>
+            <div class="child left-side-div">
+              <button id="project-notification-ignore-btn" class="enter-button"></button>
+            </div>
+          </div>
         </div>
       </div>
       <label>Add Project: <input id="new-project-input" placeholder="Project Title" value=""></label>

@@ -30,6 +30,25 @@
   justify-content: right;
 }
 
+.notification-div {
+ float:right;
+ width:40%;
+ height: auto;
+ align-self: flex-start;
+ border: 2px solid var(--black-300);
+ border-radius: 10px;
+ background-color: var(--black-400);
+ justify-content: center;
+ margin-left: 10vw;
+ margin-right: 10vw;
+ padding-left: 2vw;
+ padding-right: 2vw;
+ padding-top: 1vw;
+ padding-bottom: 1vw;
+ overflow-wrap: break-word;
+white-space: normal; 
+}
+
 .centered-header {
   display: flex; 
   justify-content: center;

@@ -24,4 +24,8 @@ declare global {
       on: (channel: string, listener: (event: IpcRendererEvent, ...args) => void) => void;
     }
   }
+  module "*.png" {
+  const value: string;
+  export default value;
+}
 }
