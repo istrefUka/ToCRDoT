@@ -23,12 +23,16 @@ const projects_path = path.join(app_path, 'projects');
 const createWindow = (): Electron.WebContents => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    height: 600,
     width: 800,
+    height: 600,
+    show: false,
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
     },
   });
+
+  // mainWindow.maximize(); uncomment to open in fullscreen mode
+  mainWindow.show();
 
   // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
