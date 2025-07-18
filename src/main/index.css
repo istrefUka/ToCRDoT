@@ -42,6 +42,44 @@
   font-weight: bold;
 }
 
+.leave-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leave-button img {
+  width: 30px;
+  height: 30px;
+}
+
+.enter-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.enter-button img {
+  width: 25px;
+  height: 25px;
+  display: block;
+}
+
+.list-item {
+  list-style: none;
+  padding-left: 0;
+}
+
 :root {
   --black-1000: #000000; /* True black - deep backgrounds */
   --black-950:  #0a0a0a; /* Primary dark background */

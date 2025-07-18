@@ -8,6 +8,14 @@ rules.push({
   use: [{ loader: 'style-loader' }, { loader: 'css-loader' }],
 });
 
+rules.push({
+  test: /\.(png|jpe?g|gif|svg)$/i,
+  type: 'asset/resource',
+  generator: {
+    filename: 'images/[name][ext]',
+  },
+});
+
 export const rendererConfig: Configuration = {
   module: {
     rules,
