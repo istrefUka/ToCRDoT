@@ -1,7 +1,6 @@
-import {v4 as uuidv4} from 'uuid';
-import { uuid, LogEntry, Person, AppendOnlyLog, Operation } from "../main/append_only_log";
-import * as fs from "fs"
-import {Task, Project, GrowOnlySet, CausalSet } from "../main/Project"
+import { v4 as uuidv4 } from 'uuid';
+import { Person, AppendOnlyLog } from "../main/append_only_log";
+import { Project, GrowOnlySet } from "../main/Project"
 
 describe("Project Tests", () => {
 
@@ -30,17 +29,17 @@ describe("Project Tests", () => {
     project.createTask(taskUUID, personUUID, title, true);
     project.changeName(personUUID, "Pascal", true);
     project.setTaskStateGUI(personUUID, taskUUID, "in Progress");
-    project.addTaskAssigneeGUI(personUUID,taskUUID, personNew);
-    project.removeTaskAssigneeGUI(personUUID,taskUUID, personNew);
+    project.addTaskAssigneeGUI(personUUID, taskUUID, personNew);
+    project.removeTaskAssigneeGUI(personUUID, taskUUID, personNew);
     const project1 = new Project(projectUUID, title, append_only_log);
     project1.charge();
-    const person: Person = {displayName: displayName, uuid: personNew};
-    const person1: Person = {displayName: displayName, uuid: personNew};
+    const person: Person = { displayName: displayName, uuid: personNew };
+    const person1: Person = { displayName: displayName, uuid: personNew };
     expect(person).toEqual(person1);
     expect(project1.members).toEqual(project.members);
     expect(project1.tasks).toEqual(project.tasks);
   });
-  
+
 
 
 })

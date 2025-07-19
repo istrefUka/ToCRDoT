@@ -26,9 +26,8 @@
  * ```
  */
 
-import { uuid } from './append_only_log';
 import './index.css';
-import { ProjectView, TaskView } from './Project';
+import { ProjectView } from './Project';
 import leaveButtonImage from "./../../assets/leave-button.png";
 import gotoProjectButtonImage from "./../../assets/goto-project-button.png";
 import addProjectButtonImage from "./../../assets/add-project-button.png";
@@ -36,10 +35,10 @@ import ignoreProjectButtonImage from "./../../assets/ignore-project-button.png";
 
 function switchScene(id: Scene) {
   document.querySelectorAll<HTMLElement>('.scene')
-          .forEach(el => el.classList.add('is-hidden'));
+    .forEach(el => el.classList.add('is-hidden'));
 
   document.querySelectorAll<HTMLElement>('.' + id)
-          .forEach(el => el.classList.remove('is-hidden'));
+    .forEach(el => el.classList.remove('is-hidden'));
 }
 
 const loginInput = document.getElementById('login-input');
@@ -59,7 +58,7 @@ window.electronAPI.on('switch-scene', (_, scene: Scene) => {
   switchScene(scene);
 });
 
-window.electronAPI.on('set-project-title', (_,projectTitle: string) => {
+window.electronAPI.on('set-project-title', (_, projectTitle: string) => {
   const titleEl = document.getElementById('project-title');
   if (titleEl) {
     titleEl.innerText = projectTitle;
@@ -115,14 +114,14 @@ function updateProjectPreview(projects: ProjectPreview[]) {
   }
 }
 
-window.electronAPI.on('update-project-preview', (_, projects: ProjectPreview[]) => {updateProjectPreview(projects);})
+window.electronAPI.on('update-project-preview', (_, projects: ProjectPreview[]) => { updateProjectPreview(projects); })
 
-window.electronAPI.on('update-project-view', (_, projectView: ProjectView) => {updateProjectView(projectView);})
+window.electronAPI.on('update-project-view', (_, projectView: ProjectView) => { updateProjectView(projectView); })
 
-const STATE_LABELS: Record<string,string> = {
-  todo:       'To Do',
+const STATE_LABELS: Record<string, string> = {
+  todo: 'To Do',
   inprogress: 'In Progress',
-  done:       'Done',
+  done: 'Done',
 };
 
 
@@ -138,69 +137,69 @@ function updateProjectView(projectView: ProjectView) { //TODO: add Members of ta
     const taskIdDiv = document.createElement('div');
     taskIdDiv.style.display = 'flex';
     taskIdDiv.style.alignItems = 'center';   // vertikal mittig
-    taskIdDiv.style.gap = '8px'; 
+    taskIdDiv.style.gap = '8px';
     const taskTitle = document.createElement('p');
     taskTitle.textContent = p.task.title;
     taskIdDiv.appendChild(taskTitle);
     const select = document.createElement('select');
     for (const stateKey of Object.keys(STATE_LABELS)) {
-    const opt = document.createElement('option');
-    opt.value = stateKey;
-    opt.textContent = STATE_LABELS[stateKey];
-    let comp:string;
-    switch (p!.task.state) {
-      case 0:
-        comp = 'todo';
-        break;
-      case 1:
-        comp = 'inprogress'
-        break;
-      case 2:
-        comp = 'done'
-        break;
+      const opt = document.createElement('option');
+      opt.value = stateKey;
+      opt.textContent = STATE_LABELS[stateKey];
+      let comp: string;
+      switch (p!.task.state) {
+        case 0:
+          comp = 'todo';
+          break;
+        case 1:
+          comp = 'inprogress'
+          break;
+        case 2:
+          comp = 'done'
+          break;
 
-      default:
-        break;
-    }
-    // falls du schon einen aktuellen state hast, markiere
-    if (stateKey === comp) {
-      
-      opt.selected = true;
-    }
-    select.appendChild(opt);
-  }
+        default:
+          break;
+      }
+      // falls du schon einen aktuellen state hast, markiere
+      if (stateKey === comp) {
 
-  select.addEventListener('change', (e) => {
-    window.electronAPI.send('change-project-task-state', p.task.taskUUID, select.value);
-  });
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    }
+
+    select.addEventListener('change', (e) => {
+      window.electronAPI.send('change-project-task-state', p.task.taskUUID, select.value);
+    });
 
     taskIdDiv.appendChild(select);
-    for(let i = 0; i < p.bools.length; i++){ //TODO: Namen besser anzeigen.
-      
+    for (let i = 0; i < p.bools.length; i++) { //TODO: Namen besser anzeigen.
+
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = p.bools[i];
       checkbox.id = i.toString();
-      
+
       checkbox.addEventListener('change', () => {
         p.bools[i] = checkbox.checked;
-        
+
         window.electronAPI.send('change-assignees', p.bools[i], p.task.taskUUID, projectView.members[i].uuid);
       })
       const labelElement = document.createElement("label");
       labelElement.htmlFor = checkbox.id;
       labelElement.textContent = projectView.members[i].displayName;
-      let divCheckboxNamed = document.createElement('div');
-      divCheckboxNamed.style.display      = 'flex';
+      const divCheckboxNamed = document.createElement('div');
+      divCheckboxNamed.style.display = 'flex';
       divCheckboxNamed.style.flexDirection = 'column';
       divCheckboxNamed.appendChild(labelElement);
       divCheckboxNamed.appendChild(checkbox);
       taskIdDiv.appendChild(divCheckboxNamed);
     }
-    
+
     listitem.appendChild(taskIdDiv);
     projectViewList.appendChild(listitem);
-    
+
   }
 }
 
@@ -215,7 +214,7 @@ const addButton = document.getElementById('project-notification-add-btn');
 const ignoreButton = document.getElementById('project-notification-ignore-btn');
 function showNotification(projectPreview: ProjectPreview, rinfo: MessageInfo) {
   projectNotification.style.display = "block";
-  notificationText.innerHTML = 'Project <b>' + projectPreview.projectTitle + '</b> is in network (ID: ' +projectPreview.projectID + ')'
+  notificationText.innerHTML = 'Project <b>' + projectPreview.projectTitle + '</b> is in network (ID: ' + projectPreview.projectID + ')'
   addButton.addEventListener('click', () => {
     window.electronAPI.send('add-project', projectPreview);
     projectNotification.style.display = "none";

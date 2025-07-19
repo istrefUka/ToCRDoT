@@ -37,7 +37,6 @@ export function isLogEntry(obj: any): obj is LogEntry {
   return o.creator !== undefined && o.id !== undefined && o.index !== undefined && o.operation !== undefined;
 }
 export function isFrontier(obj: any): obj is Frontier {
-  const o = obj as Frontier;
   if (obj instanceof Map) {
     return true;
   }

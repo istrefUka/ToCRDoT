@@ -21,7 +21,7 @@ class BaseCommunication {
 
   init(): Promise<void> {
     this.socket = dgram.createSocket('udp4');
-    if(this.onMessageCallback != null) {
+    if (this.onMessageCallback != null) {
       this.onMessage(this.onMessageCallback);
     }
     this.initSocket();
@@ -53,7 +53,7 @@ class BaseCommunication {
 
   send(msg: Buffer) {
     console.log("send activated");
-    this.socket.send(msg, this._port, this.broadcast_ip); 
+    this.socket.send(msg, this._port, this.broadcast_ip);
     console.log('sent message:', msg.toString('utf-8'), 'to', this.broadcast_ip, this._port);
   }
 
@@ -214,15 +214,15 @@ export class ProjectCommunication {
    * This method sends the frontier repeatedly with the delay specified in this.delay_ms.
    */
   async messageLoop() {
-    for (;;) {
-      if(!this.messageLoopBool){
+    for (; ;) {
+      if (!this.messageLoopBool) {
         return;
       }
       this.sendMessage(this.appendOnlyLog.get_frontier());
       await sleep(this.delay_ms);
     }
   }
-  messageLoopFalse(){
+  messageLoopFalse() {
     this.messageLoopBool = false;
   }
 }

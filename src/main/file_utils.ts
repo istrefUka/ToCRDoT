@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import { fromBase64, toBase64 } from './utils';
 import path from 'path';
 import { uuid, AppendOnlyLog } from './append_only_log';
-import {Task, Project, GrowOnlySet, CausalSet } from "../main/Project"
+import { Project } from "../main/Project"
 
 /**
  * throws an error if the user hasn't logged in yet
@@ -58,7 +58,7 @@ export function loadProjectPreview(projects_path: string, projectID: uuid): Proj
     fs.mkdirSync(projects_path, { recursive: true });
   }
   const projectTitle = fs.readFileSync(path.join(projects_path, projectID, 'project-title.txt')).toString();
-  return {projectID, projectTitle};
+  return { projectID, projectTitle };
 }
 
 export function storeNewEmptyProject(projects_path: string, project: ProjectPreview) {
@@ -73,7 +73,7 @@ export function storeNewEmptyProject(projects_path: string, project: ProjectPrev
 
 export function initializeNewProject(owner: uuid, ownerName: string, project_path: string, projectID: uuid, projectTitle: string) {
   const a = new AppendOnlyLog(path.join(project_path, "aol.json"));
-  const p = new Project(projectID, projectTitle , a);
+  const p = new Project(projectID, projectTitle, a);
   p.init(owner, ownerName, true);
   p.save();
 

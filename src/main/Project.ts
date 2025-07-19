@@ -1,8 +1,6 @@
-import path from "path";
 import * as fs from 'node:fs'
-import { uuid, LogEntry, Person, AppendOnlyLog, Operation } from "./append_only_log";
+import { uuid, Person, AppendOnlyLog, Operation } from "./append_only_log";
 import { v4 as uuidv4 } from 'uuid';
-import { skip } from "node:test";
 import { WebContents } from 'electron';
 
 export class CausalSet<T> {
@@ -70,12 +68,6 @@ export class CausalSet<T> {
     return output;
   }
 
-  debug(): void {
-  }
-
-  print(): void {
-  }
-
   /**
    * Merges in any higher “timestamps” from another causal set.
    */
@@ -140,10 +132,6 @@ export type ProjectView = {
   members: Person[]
 }
 
-
-
-
-
 export class Project {
   append_only_log: AppendOnlyLog;
   projectUUID: uuid;
@@ -197,45 +185,45 @@ export class Project {
       switch (op.command) {
         case "init":
           this.init(op.args[0], op.args[1], false);
-          if(web){
+          if (web) {
             web.send('update-project-view', this.getProjectView());
           }
           break;
         case "changeName":
           this.changeName(op.args[0], op.args[1], false);
-          if(web){
+          if (web) {
             web.send('update-project-view', this.getProjectView());
           }
           break;
         case "addMember":
           this.addMember(op.args[0], op.args[1], op.args[2], false);
-          if(web){
+          if (web) {
             web.send('update-project-view', this.getProjectView());
           }
           break;
         case "createTask":
           console.log("Creating Task");
           this.createTask(op.args[0], op.args[1], op.args[2], false);
-          if(web){
+          if (web) {
             web.send('update-project-view', this.getProjectView());
           }
           break;
         case "setTaskStateAOL":
           this.setTaskStateAOL(op.args[0], Number(op.args[1]));
-          if(web){
+          if (web) {
             web.send('update-project-view', this.getProjectView());
           }
           break;
         case "addTaskAssigneeAOL":
           this.addTaskAssigneeAOL(op.args[0], op.args[1], Number(op.args[2]));
-          if(web){
+          if (web) {
             web.send('update-project-view', this.getProjectView());
           }
           break;
 
         case "removeTaskAssigneeAOL":
           this.removeTaskAssigneeAOL(op.args[0], op.args[1], Number(op.args[2]));
-          if(web){
+          if (web) {
             web.send('update-project-view', this.getProjectView());
           }
           break;
@@ -414,12 +402,12 @@ export class Project {
     return arr;
   }
   getProjectView(): ProjectView { //TODO
-    let output: TaskView[] = [];
-    let persons = this.getOrderedMembers();
+    const output: TaskView[] = [];
+    const persons = this.getOrderedMembers();
     for (const task of this.tasks.get_Array()) {
       output.push(task.getTaskView(persons));
     }
-    let projectView: ProjectView = { taskViews: output, members: persons };
+    const projectView: ProjectView = { taskViews: output, members: persons };
     ("Amount of taskkkkkskskskskskskks " + projectView.taskViews.length);
     return projectView;
   }
@@ -482,9 +470,9 @@ export class Task {//TODO: assignees hinzufügen, CausalSet
     this.state = newerState;
   }
   getTaskView(persons: Person[]): TaskView { //TODO
-    let bools: boolean[] = [];
+    const bools: boolean[] = [];
     for (let i = 0; i < persons.length; i++) {
-      let isAssigned = this.assignees.get_set().has(persons[i].uuid);
+      const isAssigned = this.assignees.get_set().has(persons[i].uuid);
       bools.push(isAssigned);
     }
     return { task: this, bools: bools };
