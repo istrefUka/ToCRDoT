@@ -197,6 +197,7 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid, user
   ipcMain.removeAllListeners('change-project-task-state')
   ipcMain.removeAllListeners('create-new-task')
   ipcMain.removeAllListeners('change-assignees')
+  ipcMain.removeAllListeners('change-username-submit')
   return;
 }
 
