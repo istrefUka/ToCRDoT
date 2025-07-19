@@ -1,5 +1,5 @@
 import * as fs from 'fs'
-import { toBase64 } from './utils';
+import { fromBase64, toBase64 } from './utils';
 import path from 'path';
 import { uuid, AppendOnlyLog } from './append_only_log';
 import {Task, Project, GrowOnlySet, CausalSet } from "../main/Project"
@@ -34,7 +34,7 @@ function decodeUser(enc: string): User {
   if (t.length != 2) {
     throw new Error("userdata saved incorrectly");
   }
-  return { userID: t[0], userName: t[1] };
+  return { userID: t[0], userName: fromBase64(t[1]) };
 }
 
 
