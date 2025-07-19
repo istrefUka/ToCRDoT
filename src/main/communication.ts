@@ -4,8 +4,11 @@ import { AppendOnlyLog, Frontier, LogEntry, Operation, uuid } from './append_onl
 import os from 'os';
 import { toBase64, fromBase64, mapReplacer, isLogEntry, isFrontier } from './utils'
 
+/**
+ * TODO (if there is time) implement callback to notify user when the ip and the port were successfully set in the actual socket with the actual ip and port of the socket. 
+ */
 class BaseCommunication {
-  public broadcast_ip: string;
+  public broadcast_ip: string | null;
   public socket: Socket;
   private _port: number;
   private onMessageCallback: ((msg: string, rinfo: MessageInfo) => void) | undefined = undefined;
@@ -13,11 +16,14 @@ class BaseCommunication {
   constructor(broadcast_ip: string | undefined, port: number) {
     this.socket = dgram.createSocket('udp4');
     this.broadcast_ip = broadcast_ip ?? findBroadcast();
-    this._port = port;
+    this._port = port | 8080;
   }
 
   init(): Promise<void> {
     this.socket = dgram.createSocket('udp4');
+    if (this.onMessageCallback != null) {
+      this.onMessage(this.onMessageCallback);
+    }
     this.initSocket();
 
     return bindSocket(this.socket, this._port);
@@ -46,7 +52,8 @@ class BaseCommunication {
   }
 
   send(msg: Buffer) {
-    this.socket.send(msg);
+    console.log("send activated");
+    this.socket.send(msg, this._port, this.broadcast_ip);
     console.log('sent message:', msg.toString('utf-8'), 'to', this.broadcast_ip, this._port);
   }
 
@@ -58,7 +65,9 @@ class BaseCommunication {
     if (this.onMessageCallback != null) {
       this.socket.off('message', this.onMessageCallback);
     }
-    this.socket.on('message', onMessageCallback);
+    this.socket.on('message', (msg, rinfo) => {
+      onMessageCallback(msg.toString(), rinfo);
+    });
     this.onMessageCallback = onMessageCallback;
   }
 
@@ -67,26 +76,16 @@ class BaseCommunication {
   }
 
   setPort(port: number): Promise<void> {
-    return new Promise<void>(
-      (resolve) => {
-        const r = async () => {
-          await closeSocket(this.socket);
-          this.socket = dgram.createSocket('udp4');
-          this.initSocket();
-          if (this.onMessageCallback != null) {
-            this.onMessage(this.onMessageCallback);
-          }
-          await bindSocket(this.socket, port);
-          this._port = port;
-          resolve();
-        }
-        if (this.socket) {
-          closeSocket(this.socket).then(r)
-        } else {
-          r();
-        }
+    return (async () => {
+      await closeSocket(this.socket);
+      this.socket = dgram.createSocket('udp4');
+      this.initSocket();
+      if (this.onMessageCallback != null) {
+        this.onMessage(this.onMessageCallback);
       }
-    )
+      await bindSocket(this.socket, port);
+      this._port = port;
+    })();
   }
 }
 
@@ -100,6 +99,7 @@ export class ProjectCommunication {
   private crdt_update_callback: (ops: Operation[]) => void;
   public delay_ms: number;
   private communication: BaseCommunication;
+  private messageLoopBool: boolean;
 
   /**
    * The init-method should be called after this constructor. 
@@ -111,6 +111,7 @@ export class ProjectCommunication {
    * @param crdt_update_callback this callback is executed when the append-only log changes. It receives the changes as operations since the last update. 
    */
   constructor(port: number, broadcast_ip: string | undefined, projectID: uuid, projectName: string, appendOnlyLog: AppendOnlyLog, crdt_update_callback: (ops: Operation[]) => void) {
+    this.messageLoopBool = true;
     this.communication = new BaseCommunication(broadcast_ip, port);
     this.projectID = projectID;
     this.projectName = projectName;
@@ -132,7 +133,7 @@ export class ProjectCommunication {
   }
 
   init(): Promise<void> {
-    return new Promise(async (resolve) => {
+    return (async () => {
       await this.communication.init();
       this.communication.onMessage((msg, rinfo) => {
         const decoded_msg = decodeMessage(msg);
@@ -145,15 +146,17 @@ export class ProjectCommunication {
         this.handleMessage(decoded_msg);
         this.crdt_update_callback(this.appendOnlyLog.query_missing_operations_ordered(o))
       })
-      resolve();
-    });
+    })();
   }
 
-  handleMessage(msg: {projectID: uuid, projectName: string, data: LogEntry | Frontier}) {
+  handleMessage(msg: { projectID: uuid, projectName: string, data: LogEntry | Frontier }) {
+    console.log("handleMessage msg: " + msg.data);
     if (isLogEntry(msg.data)) {
       this.appendOnlyLog.update([msg.data]);
+      console.log("isLogEntry activated");
       this.appendOnlyLog.save();
     } else if (isFrontier(msg.data)) {
+      console.log("isFrontier activated");
       const frontier = msg.data as Frontier;
       for (const entry of this.appendOnlyLog.query_missing_entries_ordered(frontier)) {
         this.sendMessage(entry);
@@ -199,6 +202,7 @@ export class ProjectCommunication {
    */
   sendMessage(data: LogEntry | Frontier): void {
     try {
+      console.log("sendMessage activated");
       const enc: Buffer = Buffer.from(this.encodeMessage(data), 'utf8');
       this.communication.send(enc);
     } catch (error) {
@@ -210,13 +214,16 @@ export class ProjectCommunication {
    * This method sends the frontier repeatedly with the delay specified in this.delay_ms.
    */
   async messageLoop() {
-    let msgIndex = 0;
-
-    while (true) {
+    for (; ;) {
+      if (!this.messageLoopBool) {
+        return;
+      }
       this.sendMessage(this.appendOnlyLog.get_frontier());
-      msgIndex++;
       await sleep(this.delay_ms);
     }
+  }
+  messageLoopFalse() {
+    this.messageLoopBool = false;
   }
 }
 
@@ -240,9 +247,17 @@ export class ProjectListener {
    * Initialize the listening with a callback. 
    * @param onMessageCallback This is the callback for when a message arrives. NOTE: should be used for creating a popup 
    */
-  init(onMessageCallback: (msg: string, rinfo: MessageInfo) => void) {
+  init(onMessageCallback: (preview: ProjectPreview, rinfo: MessageInfo) => void) {
+    const messageCallback = (msg: string, rinfo: MessageInfo): void => {
+      const dec_msg = decodeMessage(msg);
+      const projPreview = {
+        projectID: dec_msg.projectID,
+        projectTitle: dec_msg.projectName,
+      };
+      onMessageCallback(projPreview, rinfo);
+    }
     this.communication.init();
-    this.communication.onMessage(onMessageCallback);
+    this.communication.onMessage(messageCallback);
   }
 
   get port() {
@@ -264,14 +279,12 @@ export class ProjectListener {
   close() {
     this.communication.close();
   }
+
+  open() {
+    this.communication.init();
+  }
 }
 
-type MessageInfo = {
-  address: string,
-  family: string,
-  port: number,
-  size: number,
-};
 
 /**
  * This function encodes a command into a string. This works by first converting 
@@ -324,14 +337,14 @@ export function decodeMessage(encMessage: string): { projectID: uuid, projectNam
   const datatype = words.shift();
   const data_enc = words.join(' ');
   switch (datatype) {
-  case 'e':
-    data = _decodeEntry(data_enc)
-    break;
-  case 'f':
-    data = _decodeFrontier(data_enc);
-    break;
-  default:
-    throw new Error("invalid datatype: '" + datatype + "', only 'e' (LogEntry) or 'f' (Frontier) allowed");
+    case 'e':
+      data = _decodeEntry(data_enc)
+      break;
+    case 'f':
+      data = _decodeFrontier(data_enc);
+      break;
+    default:
+      throw new Error("invalid datatype: '" + datatype + "', only 'e' (LogEntry) or 'f' (Frontier) allowed");
   }
   return {
     projectID,
@@ -436,7 +449,7 @@ function closeSocket(socket: Socket): Promise<void> {
  * 
  * @returns The broadcast ip address
  */
-function findBroadcast(): string {
+function findBroadcast(): string | null {
   const interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = os.networkInterfaces();
   //console.log(interfaces);
 
@@ -445,7 +458,7 @@ function findBroadcast(): string {
     const iface = interfaces[name]!;
 
     // only wireless connections are allowed
-    if (!(name.match('.*Wi-Fi.*') || name.match('.*WLAN.*') || name.match('wl.*'))) {
+    if (!(name.match('.*Wi-Fi.*') || name.match('.*WLAN.*') || name.match('wl.*') || name.match("en0"))) {
       console.log('skipped interface ' + name + ' because it is assumed not to be a wireless interface');
       continue;
     }
@@ -497,7 +510,7 @@ function findBroadcast(): string {
       }
     }
   }
-  throw new Error("No wireless interface found!");
+  return null;
 }
 
 

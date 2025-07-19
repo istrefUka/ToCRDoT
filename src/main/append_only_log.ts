@@ -21,7 +21,7 @@ export class LogEntry {
   index: number;
   dependencies: uuid[]; // ids of log-entries
 
-  constructor(creator: uuid, id: uuid, operation: Operation, dependencies: uuid[], index: number){
+  constructor(creator: uuid, id: uuid, operation: Operation, dependencies: uuid[], index: number) {
     this.creator = creator;
     this.id = id;
     this.operation = operation;
@@ -147,7 +147,7 @@ export class AppendOnlyLog {
       // base case
       if (!unmarked.has(nodeID)) return;
 
-      const current_node = this._search_entries(nodeID); 
+      const current_node = this._search_entries(nodeID);
 
       if (temp_marked.has(nodeID)) throw new Error("This graph has a cycle!!");
       if (current_node == null) throw new Error("node " + nodeID + " is not in graph");
@@ -212,7 +212,7 @@ export class AppendOnlyLog {
    */
   save(): void {
     const dir = path.dirname(this.path);
-    if (!fs.existsSync(dir)){
+    if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(this.path, JSON.stringify(this.entryMap, mapReplacer, 2), "utf-8");
@@ -226,14 +226,13 @@ export class AppendOnlyLog {
    */
   load(): void {
     this.entryMap = JSON.parse(fs.readFileSync(this.path, "utf-8").toString(), mapReviver);
-    console.log("append-only log saved successfully");
   }
 
   _search_entries(id: uuid, creator?: uuid): LogEntry | null {
     if (creator == null) {
       for (const creator of this.entryMap.keys()) {
         for (const entry of this.entryMap.get(creator)!) {
-          if (id === entry.id){
+          if (id === entry.id) {
             return entry;
           }
         }
