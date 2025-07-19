@@ -212,17 +212,30 @@ const projectNotification = document.getElementById('project-notification-div');
 const notificationText = document.getElementById('project-notification-text')
 const addButton = document.getElementById('project-notification-add-btn');
 const ignoreButton = document.getElementById('project-notification-ignore-btn');
+
+// we store callbacks so that we can remove them from the eventListener later on
+let addButtonEvent: () => void = null;
+let ignoreButtonEvent: () => void = null;
+
 function showNotification(projectPreview: ProjectPreview, rinfo: MessageInfo) {
+  if (addButtonEvent != null) {
+    addButton.removeEventListener('click', addButtonEvent);
+  }
+  if (ignoreButtonEvent != null) {
+    ignoreButton.removeEventListener('click', ignoreButtonEvent);
+  }
   projectNotification.style.display = "block";
-  notificationText.innerHTML = 'Project <b>' + projectPreview.projectTitle + '</b> is in network (ID: ' + projectPreview.projectID + ')'
-  addButton.addEventListener('click', () => {
+  notificationText.innerHTML = 'Project <b>' + projectPreview.projectTitle + '</b> is in network (ID: ' + projectPreview.projectID + ')';
+  addButtonEvent = () => {
     window.electronAPI.send('add-project', projectPreview);
     projectNotification.style.display = "none";
-  })
-  ignoreButton.addEventListener('click', () => {
+  };
+  addButton.addEventListener('click', addButtonEvent);
+  ignoreButtonEvent = () => {
     window.electronAPI.send('ignore-project', projectPreview);
     projectNotification.style.display = "none";
-  })
+  };
+  ignoreButton.addEventListener('click', ignoreButtonEvent);
   projectNotification.appendChild(addButton);
   projectNotification.appendChild(ignoreButton);
 }

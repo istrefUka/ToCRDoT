@@ -62,6 +62,7 @@ async function runApp(web: Electron.WebContents) {
     ignored_projects.add(projectPreview);
   });
   ipcMain.on('add-project', (_, projectPreview: ProjectPreview) => {
+    console.log("adding project");
     storeNewEmptyProject(projects_path, projectPreview);
     //projects.unshift(projectPreview);
     projects = loadProjectPreviews(projects_path);
@@ -90,15 +91,17 @@ async function runApp(web: Electron.WebContents) {
 
   for (; ;) {
     const open_project_p = new Promise<uuid>((resolve) => {
-      ipcMain.once('open-project', (_, projectID: uuid, projectTitle: string) => {
+      ipcMain.on('open-project', (_, projectID: uuid, projectTitle: string) => {
         ipcMain.removeAllListeners('create-new-project');
+        ipcMain.removeAllListeners('open-project');
         resolve(projectID);
       });
-      ipcMain.once('create-new-project', (_, projectTitle: string) => {
+      ipcMain.on('create-new-project', (_, projectTitle: string) => {
         const projectID = uuidv4();
         storeNewEmptyProject(projects_path, { projectID, projectTitle });
         initializeNewProject(userdata.userID, userdata.userName, path.join(projects_path, projectID), projectID, projectTitle);
         ipcMain.removeAllListeners('open-project');
+        ipcMain.removeAllListeners('create-new-project');
         resolve(projectID);
       });
     });
