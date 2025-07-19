@@ -30,14 +30,14 @@ const createWindow = (): Electron.WebContents => {
     },
   });
 
-  // mainWindow.maximize(); uncomment to open in fullscreen mode
+  mainWindow.maximize();
   mainWindow.show();
 
   // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  //mainWindow.webContents.openDevTools();
   return mainWindow.webContents;
 };
 
