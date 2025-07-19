@@ -425,7 +425,7 @@ export function loadProject(projectUUID: uuid, append_only_log: AppendOnlyLog, p
 }
 
 // state: 0 = not started, 1 = in Progress, 2 = done
-export class Task {//TODO: assignees hinzufügen, CausalSet
+export class Task {
   taskUUID: uuid;
   state: number;
   title: string;

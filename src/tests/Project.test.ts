@@ -38,6 +38,7 @@ describe("Project Tests", () => {
     expect(person).toEqual(person1);
     expect(project1.members).toEqual(project.members);
     expect(project1.tasks).toEqual(project.tasks);
+    expect(project).toEqual(project1);
   });
 
 
