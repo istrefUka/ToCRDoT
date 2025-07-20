@@ -44,7 +44,6 @@ export function loadProjectPreviews(projects_path: string): ProjectPreview[] {
     fs.mkdirSync(projects_path, { recursive: true });
   }
   const subfolders = fs.readdirSync(projects_path, { withFileTypes: true }).filter(dirent => dirent.isDirectory()).map(dirent => dirent.name);
-  console.log(subfolders);
   for (const folder of subfolders) {
     const projectID = folder;
     const projectTitle = fs.readFileSync(path.join(projects_path, folder, 'project-title.txt')).toString();
@@ -76,9 +75,4 @@ export function initializeNewProject(owner: uuid, ownerName: string, project_pat
   const p = new Project(projectID, projectTitle, a);
   p.init(owner, ownerName, true);
   p.save();
-
-
-  //TODO @istref: hie müesst me ds projekt initialisiere und persistänt spichere.
-  // me cha devo usgah ds de projekt-ordner existiert und de projekt-titel scho gspicheret worde isch. 
-  return;
 }

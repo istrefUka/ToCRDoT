@@ -52,7 +52,6 @@ class BaseCommunication {
   }
 
   send(msg: Buffer) {
-    console.log("send activated");
     this.socket.send(msg, this._port, this.broadcast_ip);
     console.log('sent message:', msg.toString('utf-8'), 'to', this.broadcast_ip, this._port);
   }
@@ -141,7 +140,6 @@ export class ProjectCommunication {
           return;
         }
         console.log('received message:', msg);
-        console.log('received message (decoded):', decoded_msg, 'from', rinfo.address, rinfo.port);
         const o = this.appendOnlyLog.get_frontier();
         this.handleMessage(decoded_msg);
         this.crdt_update_callback(this.appendOnlyLog.query_missing_operations_ordered(o))
@@ -150,13 +148,10 @@ export class ProjectCommunication {
   }
 
   handleMessage(msg: { projectID: uuid, projectName: string, data: LogEntry | Frontier }) {
-    console.log("handleMessage msg: " + msg.data);
     if (isLogEntry(msg.data)) {
       this.appendOnlyLog.update([msg.data]);
-      console.log("isLogEntry activated");
       this.appendOnlyLog.save();
     } else if (isFrontier(msg.data)) {
-      console.log("isFrontier activated");
       const frontier = msg.data as Frontier;
       for (const entry of this.appendOnlyLog.query_missing_entries_ordered(frontier)) {
         this.sendMessage(entry);
@@ -183,7 +178,6 @@ export class ProjectCommunication {
     } else {
       throw new Error('Message could not be encoded');
     }
-    //console.log("encoded message: " + res_arr.join(' '));
     return res_arr.join(' ');
   }
 
@@ -202,7 +196,6 @@ export class ProjectCommunication {
    */
   sendMessage(data: LogEntry | Frontier): void {
     try {
-      console.log("sendMessage activated");
       const enc: Buffer = Buffer.from(this.encodeMessage(data), 'utf8');
       this.communication.send(enc);
     } catch (error) {
@@ -451,7 +444,6 @@ function closeSocket(socket: Socket): Promise<void> {
  */
 function findBroadcast(): string | null {
   const interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = os.networkInterfaces();
-  //console.log(interfaces);
 
   // Iterates over every network interface
   for (const name of Object.keys(interfaces)) {
