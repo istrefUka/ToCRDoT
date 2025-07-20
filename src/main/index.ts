@@ -62,7 +62,6 @@ async function runApp(web: Electron.WebContents) {
     ignored_projects.add(projectPreview);
   });
   ipcMain.on('add-project', (_, projectPreview: ProjectPreview) => {
-    console.log("adding project");
     storeNewEmptyProject(projects_path, projectPreview);
     //projects.unshift(projectPreview);
     projects = loadProjectPreviews(projects_path);
@@ -84,7 +83,6 @@ async function runApp(web: Electron.WebContents) {
     }
     web.send('new-project-in-network', preview);
   });
-  console.log("pl.broadcast_ip: " + pl.broadcast_ip);
   web.send('update-interface', pl.broadcast_ip, pl.port);
   // TODO: (if there is time) pl.onIfaceChange( (ip, port) => { web.send('update-interface', ip, port) } );
   web.send('switch-scene', 'scene-home');
@@ -121,7 +119,6 @@ async function runApp(web: Electron.WebContents) {
 
 async function openProject(web: WebContents, projectID: uuid, userID: uuid, userName: string) {
   const projectPreview = loadProjectPreview(projects_path, projectID);
-  console.log("PATH: " + projects_path);
   web.send('set-project-title', projectPreview.projectTitle);
   const a = new AppendOnlyLog(path.join(projects_path, projectID, "aol.json"));
   try {
@@ -134,24 +131,18 @@ async function openProject(web: WebContents, projectID: uuid, userID: uuid, user
   const taskViewArr = p.getProjectView();
   web.send('update-project-view', taskViewArr);
   const pc = new ProjectCommunication(8080, undefined, projectID, projectPreview.projectTitle, a, (ops: Operation[]) => {
-    console.log("GOT UPDATES");
     p.update(ops, web);
     const frontier: Frontier = new Map<string, number>();
     const resIDs = a._query_missing_entryIDs_ordered(frontier);
     const count = resIDs.length;
     let resIDBool = true;
-    console.log("resIDs: " + resIDs);
     if (resIDs) {
       for (let i = 0; i < resIDs.length; i++) {
         if (resIDs[i] === userID) {
-          console.log("USer already added");
           resIDBool = false;
         }
       }
-      console.log("count: " + count);
       if (count >= 2 && resIDBool) {
-        console.log("count: " + count);
-        console.log("added member successfully");
         p.addMember(userID, userName, userID, true);
         web.send('update-project-view', p.getProjectView());
       }
