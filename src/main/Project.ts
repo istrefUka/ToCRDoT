@@ -72,14 +72,13 @@ export class CausalSet<T> {
    * Merges in any higher “timestamps” from another causal set.
    */
   merge(other: CausalSet<T>): void {
-    // First, update existing keys if other has a bigger counter
+    
     for (const [key, value] of this.s) {
       const otherval = other.s.get(key) ?? 0;
       if (otherval > value) {
         this.s.set(key, otherval);
       }
     }
-    // Then add any keys that we didn’t have at all
     for (const [key, value] of other.s) {
       if (!this.s.has(key)) {
         this.s.set(key, value);
@@ -116,11 +115,7 @@ export class GrowOnlySet<T> {
   }
 }
 
-//TODO: Notification for all Methods to GUI to let the GUI redraw it.
-//TODO: 2 Methoden pro Operation, da wo es Sinn macht.
-//TODO: ADD and REMOVE ASSIGNEE methods
-//TODO: update Methode
-//TODO: boolean statt AOL übergeben
+
 
 export type TaskView = {
   task: Task,
@@ -135,9 +130,9 @@ export type ProjectView = {
 export class Project {
   append_only_log: AppendOnlyLog;
   projectUUID: uuid;
-  creator: uuid | undefined; //Gute Lösung? Alternative wäre nur anfänglicher Kostruktor und mit init methode.
+  creator: uuid | undefined;
   members: GrowOnlySet<Person>;
-  tasks: GrowOnlySet<Task>; // In Array umwandeln, vlt besser
+  tasks: GrowOnlySet<Task>; 
   title: string;
 
   /**
@@ -147,7 +142,6 @@ export class Project {
    * @param append_only_log 
    */
   constructor(projectUUID: uuid, title: string, append_only_log: AppendOnlyLog) {
-    //The method init needs to be called manually if we enter this method
     this.append_only_log = append_only_log;
     this.projectUUID = projectUUID;
     this.title = title;
@@ -175,11 +169,10 @@ export class Project {
 
   charge() {
     const ops = this.append_only_log.query_missing_operations_ordered(new Map());
-    console.log(ops);
     this.update(ops);
   }
 
-  update(ops: Operation[], web?: WebContents) { //TODO: GUI-updaten nach dieser Operation
+  update(ops: Operation[], web?: WebContents) { 
     for (let i = 0; i < ops.length; i++) {
       const op = ops[i];
       switch (op.command) {
@@ -202,7 +195,6 @@ export class Project {
           }
           break;
         case "createTask":
-          console.log("Creating Task");
           this.createTask(op.args[0], op.args[1], op.args[2], false);
           if (web) {
             web.send('update-project-view', this.getProjectView());
@@ -252,12 +244,11 @@ export class Project {
     };
     const entryID = uuidv4();
 
-    const dependencies: uuid[] = [personUuid]; //Welches nehmen? oder beide?
-    this.append_only_log.add_operation(personUuid, operation, dependencies, entryID); //Welche entryID? Ist es Oke newName auch mitzugeben, seitdem auch
+    const dependencies: uuid[] = [personUuid]; 
+    this.append_only_log.add_operation(personUuid, operation, dependencies, entryID); 
   }
 
-  createTask(taskUUID: uuid, personUUID: uuid, title: string, writeToAOL: boolean): Task { //TODO: Description wahscheinlich wegnehmen.
-    console.log("createTask activated");
+  createTask(taskUUID: uuid, personUUID: uuid, title: string, writeToAOL: boolean): Task { 
     const taskState = 0;
     const task = new Task(taskUUID, taskState, title, personUUID);
     this.tasks.add(task);
@@ -274,66 +265,54 @@ export class Project {
     return task;
   }
 
-  addMember(creatorId: uuid, displayName: string, personUUID: uuid, writeToAOL: boolean): void { //TODO: Add Event notification for the GUI to tell it that there has been a member added.
+  addMember(creatorId: uuid, displayName: string, personUUID: uuid, writeToAOL: boolean): void { 
     const newMember: Person = { displayName: displayName, uuid: personUUID };
     this.members.add(newMember);
 
     if (!writeToAOL) {
       return;
     }
-    const operation: Operation = { command: "addMember", args: [creatorId, displayName, personUUID] }; //TODO: Lösung finden, um Person zu übergeben.
+    const operation: Operation = { command: "addMember", args: [creatorId, displayName, personUUID] };
     const dependencies: uuid[] = [this.projectUUID];
     this.append_only_log.add_operation(creatorId, operation, dependencies, personUUID);
   }
 
   setTaskStateAOL(taskUUID: uuid, newTaskState: number): void {
     let task = null;
-    console.log("Set: " + this.tasks.get_Array());
     for (const t of this.tasks.get_Array()) {
       if (t.taskUUID === taskUUID) {
         task = t;
         break;
       }
-    }
-    if (!task) {
-      console.warn(`Task ${taskUUID} nicht gefunden`);
     }
     task.changeState(newTaskState);
   }
 
   setTaskStateGUI(personUUID: uuid, taskUUID: uuid, newTaskState: string): void {
-    console.log("Set: " + this.tasks.get_Array());
     let task = null;
     for (const t of this.tasks.get_Array()) {
       if (t.taskUUID === taskUUID) {
         task = t;
         break;
       }
-    }
-    if (!task) {
-      console.warn(`Task ${taskUUID} nicht gefunden`);
     }
     task.changeStateGUI(newTaskState);
     const operation: Operation = {
       command: "setTaskStateAOL",
-      args: [taskUUID, task.get_State_Counter().toString()] //Anpassen!!!
+      args: [taskUUID, task.get_State_Counter().toString()] 
     };
     const dependencies: uuid[] = [taskUUID];
     const entryID = uuidv4();
 
-    this.append_only_log.add_operation(personUUID, operation, dependencies, entryID);   //TODO: Gute EntryID finden, Nur Task als dependency oder gerade alles?
+    this.append_only_log.add_operation(personUUID, operation, dependencies, entryID);   
   }
   addTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid) {
-    console.log("Set: " + this.tasks.get_Array());
     let task = null;
     for (const t of this.tasks.get_Array()) {
       if (t.taskUUID === taskUUID) {
         task = t;
         break;
       }
-    }
-    if (!task) {
-      console.warn(`Task ${taskUUID} nicht gefunden`);
     }
     const val = task.assignees.add(personUUID);
     (val);
@@ -347,30 +326,22 @@ export class Project {
     this.append_only_log.add_operation(creatorID, operation, dependencies, entryID);
   }
   addTaskAssigneeAOL(taskUUID: uuid, personUUID: uuid, value: number) {
-    console.log("Set: " + this.tasks.get_Array());
     let task = null;
     for (const t of this.tasks.get_Array()) {
       if (t.taskUUID === taskUUID) {
         task = t;
         break;
       }
-    }
-    if (!task) {
-      console.warn(`Task ${taskUUID} nicht gefunden`);
     }
     task.assignees.addAOL(personUUID, value);
   }
   removeTaskAssigneeGUI(creatorID: uuid, taskUUID: uuid, personUUID: uuid) {
-    console.log("Set: " + this.tasks.get_Array());
     let task = null;
     for (const t of this.tasks.get_Array()) {
       if (t.taskUUID === taskUUID) {
         task = t;
         break;
       }
-    }
-    if (!task) {
-      console.warn(`Task ${taskUUID} nicht gefunden`);
     }
     const val = task.assignees.remove(personUUID);
     const operation: Operation = {
@@ -390,9 +361,6 @@ export class Project {
         break;
       }
     }
-    if (!task) {
-      console.warn(`Task ${taskUUID} nicht gefunden`);
-    }
     task.assignees.removeAOL(personUUID, value);
   }
 
@@ -401,14 +369,13 @@ export class Project {
     arr.sort((a, b) => a.displayName.localeCompare(b.displayName));
     return arr;
   }
-  getProjectView(): ProjectView { //TODO
+  getProjectView(): ProjectView { 
     const output: TaskView[] = [];
     const persons = this.getOrderedMembers();
     for (const task of this.tasks.get_Array()) {
       output.push(task.getTaskView(persons));
     }
     const projectView: ProjectView = { taskViews: output, members: persons };
-    ("Amount of taskkkkkskskskskskskks " + projectView.taskViews.length);
     return projectView;
   }
 
@@ -424,7 +391,6 @@ export function loadProject(projectUUID: uuid, append_only_log: AppendOnlyLog, p
   return new Project(projectUUID, title, append_only_log);
 }
 
-// state: 0 = not started, 1 = in Progress, 2 = done
 export class Task {
   taskUUID: uuid;
   state: number;
@@ -444,7 +410,7 @@ export class Task {
       return;
     }
     this.stateCounter = newState;
-    this.state = this.stateCounter % 3; //Die 3 steht für die Anzahl states.
+    this.state = this.stateCounter % 3;
   }
 
   changeStateGUI(newState: string) {
@@ -469,7 +435,7 @@ export class Task {
     this.stateCounter = newerState - this.state + this.stateCounter + 3;
     this.state = newerState;
   }
-  getTaskView(persons: Person[]): TaskView { //TODO
+  getTaskView(persons: Person[]): TaskView {
     const bools: boolean[] = [];
     for (let i = 0; i < persons.length; i++) {
       const isAssigned = this.assignees.get_set().has(persons[i].uuid);
